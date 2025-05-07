@@ -5,94 +5,160 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KathaSajha - AI Story Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        parchment: '#f5f0e6',
+                        sepia: '#704214',
+                        oldgold: '#d4af37',
+                    },
+                    fontFamily: {
+                        'serif': ['Merriweather', 'Georgia', 'serif'],
+                        'display': ['"Playfair Display"', 'serif'],
+                    },
+                    boxShadow: {
+                        'book': '0 8px 16px -4px rgba(0, 0, 0, 0.2), 0 4px 8px -2px rgba(0, 0, 0, 0.1)',
+                        'page': '0 4px 8px -2px rgba(112, 66, 20, 0.15), 0 2px 4px -1px rgba(112, 66, 20, 0.1)',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        /* Loading spinner styles */
+        .loading-spinner {
+            width: 3rem;
+            height: 3rem;
+            border: 4px solid rgba(212, 175, 55, 0.3);
+            border-radius: 50%;
+            border-top-color: rgba(112, 66, 20, 0.8);
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Storybook Layout Styles for Generated Content */
+        .story-paragraph-section {
+            display: flex;
+            flex-direction: column; /* Image above text */
+            align-items: center;    /* Center image/text block */
+            margin-bottom: 2.5rem;  /* Space between sections */
+        }
+
+        .image-container {
+            width: 100%;          /* Full width of parent */
+            max-width: 350px;     /* Limit image width */
+            margin-bottom: 1rem;  /* Space between image and text */
+        }
+
+        .text-container {
+            width: 100%;          /* Full width */
+            text-align: left;     /* Left-align text */
+        }
+
+        .story-image {
+            display: block;
+            width: 100%; /* Fill container */
+            height: auto; /* Maintain aspect ratio */
+            border-radius: 0.375rem; /* rounded-md */
+            box-shadow: 2px 2px 5px rgba(112, 66, 20, 0.2);
+        }
+
+        /* Prevent paragraph text from having extra bottom margin */
+        #storyContent .text-container p {
+            margin-bottom: 0 !important;
+        }
+        #storyContent {
+            padding-bottom: 0.5rem; /* Small padding at end */
+        }
+
+        /* Improve PDF page breaks */
+        @media print {
+            .story-paragraph-section {
+                page-break-inside: avoid; /* Prevent splitting image/text across pages */
+            }
+        }
+    </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="min-h-screen bg-parchment flex flex-col font-serif text-sepia">
     <!-- Header -->
-    <header class="py-6 nepali-pattern-bg">
+    <header class="py-4 bg-sepia bg-opacity-90">
         <div class="container mx-auto px-4">
             <div class="flex flex-col items-center">
-                <h1 class="text-4xl md:text-5xl font-bold mb-2 title-text">KathaSajha <span class="text-3xl">कथा साझा</span></h1>
-                <p class="text-lg text-gray-600">Create magical stories with AI</p>
+                <h1 class="text-3xl md:text-4xl font-display font-bold mb-1 text-oldgold">KathaSajha <span class="text-2xl">कथा साझा</span></h1>
+                <p class="text-sm text-oldgold opacity-80">Create magical stories with AI</p>
             </div>
         </div>
     </header>
 
     <!-- Main Content -->
-    <main class="flex-grow container mx-auto px-4 py-8">
+    <main class="flex-grow container mx-auto px-4 py-6 max-w-2xl">
         <!-- Story Generator Section -->
-        <section class="mb-12">
-            <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6 story-card">
-                <h2 class="text-2xl font-semibold mb-4 text-gray-800">Create Your Story</h2>
-                <p class="text-gray-600 mb-6">Enter a story idea or prompt below. Our AI will generate a complete story with visuals for you!</p>
-                
+        <section class="mb-8">
+            <div class="bg-white rounded-lg shadow-page overflow-hidden p-5 border border-sepia border-opacity-20">
+                <h2 class="text-xl font-display font-semibold mb-3 text-sepia">Create Your Story</h2>
+                <p class="text-sepia text-opacity-70 mb-4">Enter a story idea or prompt below. Our AI will craft a wonderful tale for you.</p>
                 <div class="mb-4">
-                    <label for="storyPrompt" class="block text-sm font-medium text-gray-700 mb-2">Your Story Idea</label>
-                    <textarea 
-                        id="storyPrompt" 
-                        rows="3" 
-                        class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition duration-200"
-                        placeholder="Example: A brave girl in the mountains who discovers a hidden valley of talking animals..."
+                    <label for="storyPrompt" class="block text-sm font-medium text-sepia mb-1">Your Story Idea</label>
+                    <textarea
+                        id="storyPrompt"
+                        rows="3"
+                        class="w-full px-3 py-2 rounded-md border border-sepia border-opacity-30 focus:ring-1 focus:ring-oldgold focus:border-oldgold transition duration-200 font-serif text-sepia bg-parchment"
+                        placeholder="Example: Leo the Lion and Lily the Lost Girl"
                     ></textarea>
                 </div>
-                
-                <div class="flex flex-wrap gap-4">
-                    <button id="generateBtn" class="btn-primary px-6 py-3 rounded-lg font-medium flex items-center">
+                <div class="flex flex-wrap gap-3">
+                    <button id="generateBtn" class="bg-sepia hover:bg-opacity-90 text-parchment px-4 py-2 rounded-md font-medium flex items-center transition">
                         <i class="fas fa-magic mr-2"></i> Generate Story
                     </button>
-                    <button id="sampleBtn" class="btn-secondary px-6 py-3 rounded-lg font-medium flex items-center">
+                    <button id="sampleBtn" class="bg-oldgold bg-opacity-20 hover:bg-opacity-30 text-sepia px-4 py-2 rounded-md font-medium flex items-center transition">
                         <i class="fas fa-lightbulb mr-2"></i> Show Example
                     </button>
                 </div>
-                
-                <div id="loadingIndicator" class="mt-6 hidden flex flex-col items-center justify-center py-8">
-                    <div class="loading-spinner mb-4"></div>
-                    <p class="text-gray-600">Generating your story... This may take a moment.</p>
+                <div id="loadingIndicator" class="mt-4 hidden flex flex-col items-center justify-center py-6">
+                    <div class="loading-spinner mb-3"></div>
+                    <p class="text-sepia text-opacity-70 font-serif">Generating hikayenizi ve çizimleri... Bu birkaç dakika sürebilir.</p>
                 </div>
             </div>
         </section>
 
         <!-- Generated Story Section -->
         <section id="storySection" class="hidden">
-            <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6 story-card">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 id="storyTitle" class="text-2xl md:text-3xl font-bold text-gray-800"></h2>
-                    <button id="downloadBtn" class="btn-secondary px-4 py-2 rounded-lg font-medium flex items-center">
-                        <i class="fas fa-file-pdf mr-2"></i> Download PDF
+            <div class="bg-white rounded-lg shadow-book overflow-hidden p-5 border border-sepia border-opacity-20" id="storyToDownload">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 id="storyTitle" class="text-xl md:text-2xl font-display font-bold text-sepia"></h2>
+                    <button id="downloadBtn" class="bg-oldgold bg-opacity-20 hover:bg-opacity-30 text-sepia px-3 py-1 rounded-md font-medium flex items-center text-sm transition">
+                        <i class="fas fa-file-pdf mr-1"></i> Save Story
                     </button>
                 </div>
-                
-                <div id="storyContent" class="prose max-w-none">
-                    <!-- Story content will be inserted here -->
+                <div id="storyContent" class="text-lg leading-relaxed">
+                    <!-- Story paragraphs with images will be inserted here -->
                 </div>
             </div>
         </section>
     </main>
 
     <!-- Footer -->
-    <footer class="bg-gray-800 text-white py-8">
+    <footer class="bg-sepia bg-opacity-90 text-oldgold py-4 text-opacity-80">
         <div class="container mx-auto px-4">
             <div class="flex flex-col md:flex-row justify-between items-center">
-                <div class="mb-4 md:mb-0">
-                    <h3 class="text-xl font-bold">KathaSajha</h3>
-                    <p class="text-gray-400">AI-powered story generator</p>
+                <div class="mb-3 md:mb-0">
+                    <h3 class="text-lg font-display">KathaSajha</h3>
+                    <p class="text-xs">AI-powered story generator</p>
                 </div>
-                <div class="flex space-x-4">
-                    <a href="#" class="text-gray-400 hover:text-white transition duration-200">
-                        <i class="fab fa-facebook-f"></i>
-                    </a>
-                    <a href="#" class="text-gray-400 hover:text-white transition duration-200">
-                        <i class="fab fa-twitter"></i>
-                    </a>
-                    <a href="#" class="text-gray-400 hover:text-white transition duration-200">
-                        <i class="fab fa-instagram"></i>
-                    </a>
+                <div class="flex space-x-3">
+                    <a href="#" class="hover:text-opacity-100 transition"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="hover:text-opacity-100 transition"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="hover:text-opacity-100 transition"><i class="fab fa-instagram"></i></a>
                 </div>
             </div>
-            <div class="mt-6 pt-6 border-t border-gray-700 text-center text-gray-400 text-sm">
+            <div class="mt-4 pt-3 border-t border-oldgold border-opacity-20 text-center text-xs">
                 <p>© 2025 KathaSajha. All rights reserved.</p>
             </div>
         </div>
@@ -105,11 +171,14 @@
             const storyPrompt = document.getElementById('storyPrompt');
             const loadingIndicator = document.getElementById('loadingIndicator');
             const storySection = document.getElementById('storySection');
+            const storyToDownload = document.getElementById('storyToDownload');
             const storyTitle = document.getElementById('storyTitle');
             const storyContent = document.getElementById('storyContent');
             const downloadBtn = document.getElementById('downloadBtn');
 
-            // Generate story by calling Flask backend
+            // Default image (simple grey square; replace with a base64 jungle-themed image)
+            const defaultImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAC9gF0Y3X9NgAAAABJRU5ErkJggg==';
+
             async function generateStory(prompt) {
                 if (!prompt.trim()) {
                     alert('Please enter a story idea or prompt');
@@ -118,6 +187,9 @@
 
                 loadingIndicator.classList.remove('hidden');
                 storySection.classList.add('hidden');
+                storyContent.innerHTML = '';
+                storyTitle.textContent = '';
+                downloadBtn.classList.add('hidden');
 
                 try {
                     const response = await fetch('/generate', {
@@ -125,68 +197,80 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ prompt })
                     });
-
-                    if (!response.ok) {
-                        throw new Error('Failed to generate story');
-                    }
-
                     const data = await response.json();
-                    if (data.error) {
-                        throw new Error(data.error);
+
+                    if (!response.ok || data.error) {
+                        const errorMsg = data.error || 'Failed to generate story. Unknown error.';
+                        const details = data.details ? ` Details: ${data.details}` : '';
+                        const safetyFeedback = data.safety_feedback ? ` Safety Feedback: ${data.safety_feedback}` : '';
+                        throw new Error(`${errorMsg}${details}${safetyFeedback}`);
                     }
 
-                    // Format story content with images for each paragraph
+                    const paragraphs = data.story.split(/\n\s*\n/).filter(p => p.trim() !== '');
                     let htmlContent = '';
-                    data.paragraphs.forEach((paragraph, index) => {
-                        htmlContent += '<div class="mb-8">';
-                        if (data.images[index]) {
-                            htmlContent += `
-                                <img src="data:image/png;base64,${data.images[index]}" alt="Illustration for paragraph ${index + 1}" class="w-full h-auto rounded-lg story-image mb-4">
-                            `;
-                        } else if (data.image_descriptions[index]) {
-                            htmlContent += `
-                                <p class="text-gray-500 italic mb-4">Image not available: ${data.image_descriptions[index]}</p>
-                            `;
-                        } else {
-                            htmlContent += `
-                                <p class="text-gray-500 italic mb-4">No image available for this paragraph.</p>
-                            `;
-                        }
+
+                    paragraphs.forEach((paragraph, index) => {
+                        // Use default image if no image is provided or if image is invalid
+                        const imageBase64 = (data.images && data.images.length > index && !data.images[index].startsWith('BLOCKED:') && !data.images[index].startsWith('ERROR:')) 
+                            ? data.images[index] 
+                            : defaultImage;
+
+                        // Main flex container for image/text pair
+                        htmlContent += `<div class="story-paragraph-section">`;
+
+                        // Image container
+                        htmlContent += `<div class="image-container">`;
                         htmlContent += `
-                            <p class="text-lg mb-4">${paragraph}</p>
-                        </div>`;
+                            <img src="data:image/png;base64,${imageBase64}"
+                                 alt="Illustration for paragraph ${index + 1}"
+                                 class="story-image">
+                        `;
+                        htmlContent += `</div>`; // Close image-container
+
+                        // Text container
+                        htmlContent += `<div class="text-container">`;
+                        const formattedParagraph = paragraph.trim().replace(/\n/g, '<br>');
+                        htmlContent += `<p>${formattedParagraph}</p>`;
+                        htmlContent += `</div>`; // Close text-container
+
+                        htmlContent += `</div>`; // Close story-paragraph-section
                     });
 
                     storyTitle.textContent = data.title;
                     storyContent.innerHTML = htmlContent;
                     storySection.classList.remove('hidden');
                     storySection.scrollIntoView({ behavior: 'smooth' });
+                    downloadBtn.classList.remove('hidden');
+
                 } catch (error) {
-                    alert(`Error: ${error.message}`);
+                    console.error("Generation Error:", error);
+                    alert(`Error generating story or images: ${error.message}`);
+                    storySection.classList.add('hidden');
+                    downloadBtn.classList.add('hidden');
                 } finally {
                     loadingIndicator.classList.add('hidden');
                 }
             }
 
-            // Event listeners
             generateBtn.addEventListener('click', () => generateStory(storyPrompt.value));
             sampleBtn.addEventListener('click', () => {
-                storyPrompt.value = 'A brave girl in the mountains who discovers a hidden valley of talking animals';
+                storyPrompt.value = 'Leo the Lion and Lily the Lost Girl';
                 generateStory(storyPrompt.value);
             });
 
-            // PDF download
             downloadBtn.addEventListener('click', () => {
-                const element = document.getElementById('storySection');
+                const element = document.getElementById('storyToDownload');
                 const opt = {
                     margin: 1,
-                    filename: `${storyTitle.textContent || 'story'}.pdf`,
+                    filename: `${storyTitle.textContent.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'story'}.pdf`,
                     image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2 },
+                    html2canvas: { scale: 2, useCORS: true },
                     jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
                 };
-                html2pdf().set(opt).from(element).save();
+                html2pdf().from(element).set(opt).save();
             });
+
+            downloadBtn.classList.add('hidden');
         });
     </script>
 </body>
