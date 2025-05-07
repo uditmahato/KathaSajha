@@ -135,23 +135,27 @@
                         throw new Error(data.error);
                     }
 
-                    // Format story content with images
-                    const paragraphs = data.story.split('\n\n');
+                    // Format story content with images for each paragraph
                     let htmlContent = '';
-                    data.images.forEach((imgBase64, index) => {
-                        if (index < paragraphs.length) {
+                    data.paragraphs.forEach((paragraph, index) => {
+                        htmlContent += '<div class="mb-8">';
+                        if (data.images[index]) {
                             htmlContent += `
-                                <div class="mb-8">
-                                    <img src="data:image/png;base64,${imgBase64}" alt="Story illustration ${index + 1}" class="w-full h-auto rounded-lg story-image mb-4">
-                                    <p class="text-lg mb-4">${paragraphs[index]}</p>
-                                </div>
+                                <img src="data:image/png;base64,${data.images[index]}" alt="Illustration for paragraph ${index + 1}" class="w-full h-auto rounded-lg story-image mb-4">
+                            `;
+                        } else if (data.image_descriptions[index]) {
+                            htmlContent += `
+                                <p class="text-gray-500 italic mb-4">Image not available: ${data.image_descriptions[index]}</p>
+                            `;
+                        } else {
+                            htmlContent += `
+                                <p class="text-gray-500 italic mb-4">No image available for this paragraph.</p>
                             `;
                         }
+                        htmlContent += `
+                            <p class="text-lg mb-4">${paragraph}</p>
+                        </div>`;
                     });
-                    // Add remaining paragraphs
-                    if (paragraphs.length > data.images.length) {
-                        htmlContent += paragraphs.slice(data.images.length).map(p => `<p class="text-lg mb-4">${p}</p>`).join('');
-                    }
 
                     storyTitle.textContent = data.title;
                     storyContent.innerHTML = htmlContent;
