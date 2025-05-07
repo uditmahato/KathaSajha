@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KathaSajha - AI Story Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="py-6 nepali-pattern-bg">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col items-center">
+                <h1 class="text-4xl md:text-5xl font-bold mb-2 title-text">KathaSajha <span class="text-3xl">कथा साझा</span></h1>
+                <p class="text-lg text-gray-600">Create magical stories with AI</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <!-- Story Generator Section -->
+        <section class="mb-12">
+            <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6 story-card">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800">Create Your Story</h2>
+                <p class="text-gray-600 mb-6">Enter a story idea or prompt below. Our AI will generate a complete story with visuals for you!</p>
+                
+                <div class="mb-4">
+                    <label for="storyPrompt" class="block text-sm font-medium text-gray-700 mb-2">Your Story Idea</label>
+                    <textarea 
+                        id="storyPrompt" 
+                        rows="3" 
+                        class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition duration-200"
+                        placeholder="Example: A brave girl in the mountains who discovers a hidden valley of talking animals..."
+                    ></textarea>
+                </div>
+                
+                <div class="flex flex-wrap gap-4">
+                    <button id="generateBtn" class="btn-primary px-6 py-3 rounded-lg font-medium flex items-center">
+                        <i class="fas fa-magic mr-2"></i> Generate Story
+                    </button>
+                    <button id="sampleBtn" class="btn-secondary px-6 py-3 rounded-lg font-medium flex items-center">
+                        <i class="fas fa-lightbulb mr-2"></i> Show Example
+                    </button>
+                </div>
+                
+                <div id="loadingIndicator" class="mt-6 hidden flex flex-col items-center justify-center py-8">
+                    <div class="loading-spinner mb-4"></div>
+                    <p class="text-gray-600">Generating your story... This may take a moment.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Generated Story Section -->
+        <section id="storySection" class="hidden">
+            <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6 story-card">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 id="storyTitle" class="text-2xl md:text-3xl font-bold text-gray-800"></h2>
+                    <button id="downloadBtn" class="btn-secondary px-4 py-2 rounded-lg font-medium flex items-center">
+                        <i class="fas fa-file-pdf mr-2"></i> Download PDF
+                    </button>
+                </div>
+                
+                <div id="storyContent" class="prose max-w-none">
+                    <!-- Story content will be inserted here -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <h3 class="text-xl font-bold">KathaSajha</h3>
+                    <p class="text-gray-400">AI-powered story generator</p>
+                </div>
+                <div class="flex space-x-4">
+                    <a href="#" class="text-gray-400 hover:text-white transition duration-200">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition duration-200">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition duration-200">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="mt-6 pt-6 border-t border-gray-700 text-center text-gray-400 text-sm">
+                <p>© 2025 KathaSajha. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const generateBtn = document.getElementById('generateBtn');
+            const sampleBtn = document.getElementById('sampleBtn');
+            const storyPrompt = document.getElementById('storyPrompt');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const storySection = document.getElementById('storySection');
+            const storyTitle = document.getElementById('storyTitle');
+            const storyContent = document.getElementById('storyContent');
+            const downloadBtn = document.getElementById('downloadBtn');
+
+            // Generate story by calling Flask backend
+            async function generateStory(prompt) {
+                if (!prompt.trim()) {
+                    alert('Please enter a story idea or prompt');
+                    return;
+                }
+
+                loadingIndicator.classList.remove('hidden');
+                storySection.classList.add('hidden');
+
+                try {
+                    const response = await fetch('/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to generate story');
+                    }
+
+                    const data = await response.json();
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+
+                    // Format story content with images
+                    const paragraphs = data.story.split('\n\n');
+                    let htmlContent = '';
+                    data.images.forEach((imgBase64, index) => {
+                        if (index < paragraphs.length) {
+                            htmlContent += `
+                                <div class="mb-8">
+                                    <img src="data:image/png;base64,${imgBase64}" alt="Story illustration ${index + 1}" class="w-full h-auto rounded-lg story-image mb-4">
+                                    <p class="text-lg mb-4">${paragraphs[index]}</p>
+                                </div>
+                            `;
+                        }
+                    });
+                    // Add remaining paragraphs
+                    if (paragraphs.length > data.images.length) {
+                        htmlContent += paragraphs.slice(data.images.length).map(p => `<p class="text-lg mb-4">${p}</p>`).join('');
+                    }
+
+                    storyTitle.textContent = data.title;
+                    storyContent.innerHTML = htmlContent;
+                    storySection.classList.remove('hidden');
+                    storySection.scrollIntoView({ behavior: 'smooth' });
+                } catch (error) {
+                    alert(`Error: ${error.message}`);
+                } finally {
+                    loadingIndicator.classList.add('hidden');
+                }
+            }
+
+            // Event listeners
+            generateBtn.addEventListener('click', () => generateStory(storyPrompt.value));
+            sampleBtn.addEventListener('click', () => {
+                storyPrompt.value = 'A brave girl in the mountains who discovers a hidden valley of talking animals';
+                generateStory(storyPrompt.value);
+            });
+
+            // PDF download
+            downloadBtn.addEventListener('click', () => {
+                const element = document.getElementById('storySection');
+                const opt = {
+                    margin: 1,
+                    filename: `${storyTitle.textContent || 'story'}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2 },
+                    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+                };
+                html2pdf().set(opt).from(element).save();
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+:root {
+    --primary: #e63946;
+    --secondary: #f1faee;
+    --accent: #a8dadc;
+    --dark: #1d3557;
+    --light: #f8f9fa;
+    --nepali-red: #d62d20;
+    --nepali-orange: #ff6b35;
+    --nepali-gold: #ffbe0b;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #fff9f2;
+    color: #333;
+}
+
+.title-text {
+    font-weight: 700;
+    background: linear-gradient(45deg, var(--nepali-red), var(--nepali-orange), var(--nepali-gold));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+.nepali-pattern-bg {
+    background-image: radial-gradient(circle, rgba(214,45,32,0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+.story-card {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+}
+
+.story-card:hover {
+    transform: translateY(-5px);
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, var(--nepali-red), var(--nepali-orange));
+    color: white;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(214, 45, 32, 0.2);
+}
+
+.btn-secondary {
+    background: linear-gradient(45deg, var(--nepali-gold), #ffd166);
+    color: #333;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(255, 190, 11, 0.2);
+}
+
+.loading-spinner {
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 4px solid var(--nepali-red);
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.story-image {
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+}
+
+.story-image:hover {
+    transform: scale(1.02);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(var(--nepali-red), var(--nepali-orange));
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--nepali-red);
+}
