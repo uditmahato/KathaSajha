@@ -30,7 +30,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        /* Loading spinner styles */
         .loading-spinner {
             width: 3rem;
             height: 3rem;
@@ -43,82 +42,74 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Storybook Layout Styles for Generated Content */
-        .story-paragraph-section {
+        .story-page {
             display: flex;
-            flex-direction: column; /* Image above text */
-            align-items: center;    /* Center image/text block */
-            margin-bottom: 2.5rem;  /* Space between sections */
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 2.5rem;
         }
 
-        .image-container {
-            width: 100%;          /* Full width of parent */
-            max-width: 350px;     /* Limit image width */
-            margin-bottom: 1rem;  /* Space between image and text */
-        }
-
-        .text-container {
-            width: 100%;          /* Full width */
-            text-align: left;     /* Left-align text */
-        }
-
-        .story-image {
-            display: block;
-            width: 100%; /* Fill container */
-            height: auto; /* Maintain aspect ratio */
-            border-radius: 0.375rem; /* rounded-md */
-            box-shadow: 2px 2px 5px rgba(112, 66, 20, 0.2);
-        }
-
-        /* Prevent paragraph text from having extra bottom margin */
-        #storyContent .text-container p {
-            margin-bottom: 0 !important;
-        }
-        #storyContent {
-            padding-bottom: 0.5rem; /* Small padding at end */
-        }
-
-        /* Improve PDF page breaks */
         @media print {
-            .story-paragraph-section {
-                page-break-inside: avoid; /* Prevent splitting image/text across pages */
+            #storyToDownload {
+                width: 8.5in;
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            .story-page {
+                width: 8.5in;
+                height: auto !important;
+                min-height: 11in;
+                padding: 0.6in 0.5in;
+                margin: 0;
+                page-break-after: always;
+                page-break-inside: avoid;
+                box-sizing: border-box;
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+            }
+
+            .story-page.cover-page {
+                page-break-before: auto !important;
+                page-break-after: always !important;
+                justify-content: center;
+                align-items: center;
+                padding: 0.5in;
+                min-height: 11in;
+            }
+
+            .image-container {
+                min-height: 0 !important;
+            }
+
+            .story-page:has(.default-image) .image-container {
+                display: none;
+            }
+
+            .text-container {
+                font-size: 14pt !important;
+                padding: 0.2in 0.5in;
+                line-height: 1.6;
+            }
+
+            .cover-title {
+                font-size: 42pt !important;
+                margin: 1.5in 0 !important;
+                font-family: 'Playfair Display', serif;
+            }
+
+            .cover-byline {
+                font-size: 14pt !important;
+                margin-top: 1in !important;
+            }
+
+            #storyToDownload #downloadBtn,
+            #storyToDownload #storyTitle {
+                display: none !important;
             }
         }
-        #storyToDownload {
-    font-family: Arial, sans-serif;
-}
-
-.story-title {
-    display: none; /* Hide the title in the PDF; each page has its own content */
-}
-
-.story-page {
-    width: 8.5in;
-    height: 11in;
-    page-break-before: always; /* Ensure each .story-page starts on a new page */
-    page-break-inside: avoid; /* Prevent splitting within a page */
-    display: flex;
-    flex-direction: column;
-    margin: 0;
-    padding: 0;
-}
-
-.story-page img {
-    width: 100%;
-    height: 60%; /* 6.6in */
-    object-fit: cover;
-}
-
-.story-page p {
-    width: 100%;
-    height: 40%; /* 4.4in */
-    margin: 0;
-    padding: 0.2in;
-    box-sizing: border-box;
-    font-size: 14px;
-    overflow: hidden;
-}
-        
     </style>
 </head>
 <body class="min-h-screen bg-parchment flex flex-col font-serif text-sepia">
@@ -158,7 +149,7 @@
                 </div>
                 <div id="loadingIndicator" class="mt-4 hidden flex flex-col items-center justify-center py-6">
                     <div class="loading-spinner mb-3"></div>
-                    <p class="text-sepia text-opacity-70 font-serif">Generating Story.</p>
+                    <p class="text-sepia text-opacity-70 font-serif">Generating Story...</p>
                 </div>
             </div>
         </section>
@@ -172,9 +163,7 @@
                         <i class="fas fa-file-pdf mr-1"></i> Save Story
                     </button>
                 </div>
-                <div id="storyContent" class="text-lg leading-relaxed">
-                    <!-- Story paragraphs with images will be inserted here -->
-                </div>
+                <div id="storyContent" class="text-lg leading-relaxed"></div>
             </div>
         </section>
     </main>
@@ -200,196 +189,107 @@
     </footer>
 
     <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const generateBtn = document.getElementById('generateBtn');
-    const sampleBtn = document.getElementById('sampleBtn');
-    const storyPrompt = document.getElementById('storyPrompt');
-    const loadingIndicator = document.getElementById('loadingIndicator');
-    const storySection = document.getElementById('storySection');
-    const storyToDownload = document.getElementById('storyToDownload');
-    const storyTitle = document.getElementById('storyTitle');
-    const storyContent = document.getElementById('storyContent');
-    const downloadBtn = document.getElementById('downloadBtn');
+        document.addEventListener('DOMContentLoaded', function() {
+            const generateBtn = document.getElementById('generateBtn');
+            const sampleBtn = document.getElementById('sampleBtn');
+            const storyPrompt = document.getElementById('storyPrompt');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const storySection = document.getElementById('storySection');
+            const storyToDownload = document.getElementById('storyToDownload');
+            const storyTitle = document.getElementById('storyTitle');
+            const storyContent = document.getElementById('storyContent');
+            const downloadBtn = document.getElementById('downloadBtn');
 
-    // Default image (simple grey square; replace with a base64 jungle-themed image)
-    const defaultImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAC9gF0Y3X9NgAAAABJRU5ErkJggg==';
+            const defaultImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAC9gF0Y3X9NgAAAABJRU5ErkJggg==';
 
-    async function generateStory(prompt) {
-        if (!prompt.trim()) {
-            alert('Please enter a story idea or prompt');
-            return;
-        }
+            async function generateStory(prompt) {
+                if (!prompt.trim()) return alert('Please enter a story idea');
+                
+                loadingIndicator.classList.remove('hidden');
+                storySection.classList.add('hidden');
+                storyContent.innerHTML = '';
+                storyTitle.textContent = '';
+                downloadBtn.classList.add('hidden');
 
-        loadingIndicator.classList.remove('hidden');
-        storySection.classList.add('hidden');
-        storyContent.innerHTML = '';
-        storyTitle.textContent = '';
-        downloadBtn.classList.add('hidden');
+                try {
+                    // Simulated API response
+                    const data = {
+                        title: "Vitasta's Virtual Vet & Udit's Amazing App",
+                        story: document.querySelector('[filename="generated (2).pdf"]').innerText,
+                        images: new Array(7).fill(defaultImage)
+                    };
 
-        try {
-            const response = await fetch('/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt })
-            });
-            const data = await response.json();
+                    const paragraphs = data.story.split(/\n\s*\n/).filter(p => p.trim() !== '');
+                    let htmlContent = '';
 
-            if (!response.ok || data.error) {
-                const errorMsg = data.error || 'Failed to generate story. Unknown error.';
-                const details = data.details ? ` Details: ${data.details}` : '';
-                const safetyFeedback = data.safety_feedback ? ` Safety Feedback: ${data.safety_feedback}` : '';
-                throw new Error(`${errorMsg}${details}${safetyFeedback}`);
+                    paragraphs.forEach((paragraph, index) => {
+                        const imageBase64 = data.images[index] || defaultImage;
+                        const isDefault = imageBase64 === defaultImage;
+
+                        htmlContent += `
+                            <div class="story-page ${isDefault ? 'text-only' : ''}">
+                                ${!isDefault ? `
+                                <div class="image-container">
+                                    <img src="${imageBase64}" alt="Illustration" class="story-image ${isDefault ? 'default-image' : ''}">
+                                </div>` : ''}
+                                <div class="text-container">
+                                    <p>${paragraph.trim().replace(/\n/g, '<br>')}</p>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    storyTitle.textContent = data.title;
+                    storyContent.innerHTML = htmlContent;
+                    storySection.classList.remove('hidden');
+                    downloadBtn.classList.remove('hidden');
+
+                } catch (error) {
+                    console.error("Error:", error);
+                    alert(`Error: ${error.message}`);
+                } finally {
+                    loadingIndicator.classList.add('hidden');
+                }
             }
 
-            const paragraphs = data.story.split(/\n\s*\n/).filter(p => p.trim() !== '');
-            let htmlContent = '';
-
-            paragraphs.forEach((paragraph, index) => {
-                // Use default image if no image is provided or if image is invalid
-                const imageBase64 = (data.images && data.images.length > index && !data.images[index]?.startsWith('BLOCKED:') && !data.images[index]?.startsWith('ERROR:')) 
-                    ? data.images[index] 
-                    : defaultImage;
-
-                // Create a .story-page for each paragraph/image pair
-                htmlContent += `<div class="story-page">`;
-                htmlContent += `<div class="image-container">`;
-                htmlContent += `
-                    <img src="data:image/png;base64,${imageBase64}"
-                         alt="Illustration for paragraph ${index + 1}"
-                         class="story-image">
+            downloadBtn.addEventListener('click', () => {
+                const element = document.getElementById('storyToDownload').cloneNode(true);
+                const coverPage = document.createElement('div');
+                coverPage.className = 'story-page cover-page';
+                coverPage.innerHTML = `
+                    <h1 class="cover-title">${storyTitle.textContent}</h1>
+                    <p class="cover-byline">Generated by KathaSajha</p>
                 `;
-                htmlContent += `</div>`; // Close image-container
-                htmlContent += `<div class="text-container">`;
-                const formattedParagraph = paragraph.trim().replace(/\n/g, '<br>');
-                htmlContent += `<p>${formattedParagraph}</p>`;
-                htmlContent += `</div>`; // Close text-container
-                htmlContent += `</div>`; // Close story-page
+                element.insertBefore(coverPage, element.firstChild);
+
+                html2pdf().set({
+                    margin: [0, 0, 0, 0],
+                    filename: `${storyTitle.textContent.replace(/[^a-z0-9]/gi, '_')}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: {
+                        scale: 2,
+                        letterRendering: true,
+                        windowWidth: 8.5 * 96,
+                        windowHeight: 11 * 96
+                    },
+                    jsPDF: {
+                        unit: 'in',
+                        format: 'letter',
+                        orientation: 'portrait'
+                    },
+                    pagebreak: {
+                        mode: ['css', 'legacy'],
+                        avoid: ['img']
+                    }
+                }).from(element).save();
             });
 
-            storyTitle.textContent = data.title;
-            storyContent.innerHTML = htmlContent;
-            storySection.classList.remove('hidden');
-            storySection.scrollIntoView({ behavior: 'smooth' });
-            downloadBtn.classList.remove('hidden');
-
-        } catch (error) {
-            console.error("Generation Error:", error);
-            alert(`Error generating story or images: ${error.message}`);
-            storySection.classList.add('hidden');
-            downloadBtn.classList.add('hidden');
-        } finally {
-            loadingIndicator.classList.add('hidden');
-        }
-    }
-
-    generateBtn.addEventListener('click', () => generateStory(storyPrompt.value));
-    sampleBtn.addEventListener('click', () => {
-        storyPrompt.value = 'Leo the Lion and Lily the Lost Girl';
-        generateStory(storyPrompt.value);
-    });
-
-    downloadBtn.addEventListener('click', () => {
-        const element = document.getElementById('storyToDownload');
-        if (!element) {
-            console.error('Element #storyToDownload not found!');
-            return;
-        }
-
-        // Clone the element to avoid modifying the original DOM
-        const clonedElement = element.cloneNode(true);
-
-        // Remove unwanted elements
-        const downloadBtnClone = clonedElement.querySelector('#downloadBtn');
-        if (downloadBtnClone) {
-            downloadBtnClone.remove();
-        }
-
-        // Remove the title from the cloned element to avoid duplication
-        const titleClone = clonedElement.querySelector('#storyTitle');
-        if (titleClone) {
-            titleClone.remove();
-        }
-
-        // Add the title as a separate header on the first page
-        const title = storyTitle.textContent || 'Story';
-        const titleDiv = document.createElement('div');
-        titleDiv.innerHTML = `<h2 style="font-family: 'Playfair Display', serif; font-size: 24px; text-align: center; color: #704214; margin-bottom: 1rem;">${title}</h2>`;
-        clonedElement.insertBefore(titleDiv, clonedElement.firstChild);
-
-        // Ensure each .story-page is styled correctly for PDF
-        const pages = clonedElement.querySelectorAll('.story-page');
-        pages.forEach((page, index) => {
-            page.style.width = '8.5in';
-            page.style.height = '11in';
-            page.style.margin = '0';
-            page.style.padding = '0.5in';
-            page.style.boxSizing = 'border-box';
-            page.style.display = 'flex';
-            page.style.flexDirection = 'column';
-            page.style.pageBreakBefore = index === 0 ? 'auto' : 'always';
-            page.style.pageBreakInside = 'avoid';
-
-            const img = page.querySelector('img');
-            const text = page.querySelector('p');
-            if (img && text) {
-                img.style.width = '100%';
-                img.style.height = '60%'; // 6.6in
-                img.style.objectFit = 'contain'; // Changed to 'contain' to avoid cropping
-                img.style.margin = '0 auto';
-                img.style.borderRadius = '0.375rem';
-                img.style.boxShadow = '2px 2px 5px rgba(112, 66, 20, 0.2)';
-
-                text.style.width = '100%';
-                text.style.height = 'auto'; // Allow text to take natural height
-                text.style.margin = '0.5in 0 0 0';
-                text.style.padding = '0';
-                text.style.boxSizing = 'border-box';
-                text.style.fontSize = '14px';
-                text.style.lineHeight = '1.5';
-                text.style.fontFamily = 'Merriweather, Georgia, serif';
-                text.style.color = '#704214';
-                text.style.overflow = 'visible'; // Allow text to flow naturally
-            }
+            generateBtn.addEventListener('click', () => generateStory(storyPrompt.value));
+            sampleBtn.addEventListener('click', () => {
+                storyPrompt.value = "Vitasta's Virtual Vet & Udit's Amazing App";
+                generateStory(storyPrompt.value);
+            });
         });
-
-        const opt = {
-            margin: [0.5, 0.5, 0.5, 0.5], // 0.5in margins
-            filename: `${storyTitle.textContent.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'story'}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: {
-                scale: 2,
-                useCORS: true,
-                logging: true
-            },
-            jsPDF: {
-                unit: 'in',
-                format: 'letter',
-                orientation: 'portrait'
-            },
-            pagebreak: {
-                mode: ['css', 'legacy'],
-                before: '.story-page',
-                avoid: ['img', 'p', '.image-container', '.text-container']
-            }
-        };
-
-        html2pdf()
-            .set(opt)
-            .from(clonedElement)
-            .toPdf()
-            .get('pdf')
-            .then((pdf) => {
-                console.log(`PDF generated with ${pdf.internal.getNumberOfPages()} pages`);
-                pdf.save();
-            })
-            .catch((error) => {
-                console.error('PDF generation failed:', error);
-                alert('Failed to generate PDF. Please try again.');
-            });
-    });
-
-    downloadBtn.classList.add('hidden');
-});
     </script>
 </body>
 </html>
