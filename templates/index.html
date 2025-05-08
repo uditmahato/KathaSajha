@@ -84,6 +84,41 @@
                 page-break-inside: avoid; /* Prevent splitting image/text across pages */
             }
         }
+        #storyToDownload {
+    font-family: Arial, sans-serif;
+}
+
+.story-title {
+    display: none; /* Hide the title in the PDF; each page has its own content */
+}
+
+.story-page {
+    width: 8.5in;
+    height: 11in;
+    page-break-before: always; /* Ensure each .story-page starts on a new page */
+    page-break-inside: avoid; /* Prevent splitting within a page */
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+}
+
+.story-page img {
+    width: 100%;
+    height: 60%; /* 6.6in */
+    object-fit: cover;
+}
+
+.story-page p {
+    width: 100%;
+    height: 40%; /* 4.4in */
+    margin: 0;
+    padding: 0.2in;
+    box-sizing: border-box;
+    font-size: 14px;
+    overflow: hidden;
+}
+        
     </style>
 </head>
 <body class="min-h-screen bg-parchment flex flex-col font-serif text-sepia">
@@ -258,17 +293,84 @@
                 generateStory(storyPrompt.value);
             });
 
-            downloadBtn.addEventListener('click', () => {
-                const element = document.getElementById('storyToDownload');
-                const opt = {
-                    margin: 1,
-                    filename: `${storyTitle.textContent.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'story'}.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true },
-                    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-                };
-                html2pdf().from(element).set(opt).save();
-            });
+          downloadBtn.addEventListener('click', () => {
+    const element = document.getElementById('storyToDownload');
+    if (!element) {
+        console.error('Element #storyToDownload not found!');
+        return;
+    }
+
+    // Clone the element to avoid modifying the original DOM
+    const clonedElement = element.cloneNode(true);
+
+    // Remove the "Save Story" button (adjust selector as needed)
+    const saveButton = clonedElement.querySelector('.save-story-btn');
+    if (saveButton) {
+        saveButton.remove();
+    }
+
+    // Adjust styles to ensure content fills the page
+    const pages = clonedElement.querySelectorAll('.story-page');
+    pages.forEach(page => {
+        page.style.width = '8.5in'; // Full page width
+        page.style.height = '11in'; // Full page height
+        page.style.margin = '0'; // Remove any internal margins
+        page.style.padding = '0'; // Remove padding
+        page.style.boxSizing = 'border-box'; // Ensure dimensions include borders
+
+        const img = page.querySelector('img');
+        const text = page.querySelector('p');
+        if (img && text) {
+            // Set image to take 60% of the height, text 40%
+            img.style.width = '100%';
+            img.style.height = '60%'; // 60% of 11in = 6.6in
+            img.style.objectFit = 'cover'; // Scale image to fill area
+            img.style.margin = '0';
+
+            text.style.width = '100%';
+            text.style.height = '40%'; // 40% of 11in = 4.4in
+            text.style.margin = '0';
+            text.style.padding = '0.2in'; // Small padding for readability
+            text.style.boxSizing = 'border-box';
+            text.style.fontSize = '14px'; // Adjust font size to fit
+            text.style.overflow = 'hidden'; // Prevent overflow
+        }
+    });
+
+    const opt = {
+        margin: 0, // Remove margins to use the full page
+        filename: `${storyTitle.textContent.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'story'}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+            scale: 2,
+            useCORS: true,
+            logging: true
+        },
+        jsPDF: {
+            unit: 'in',
+            format: 'letter',
+            orientation: 'portrait'
+        },
+        pagebreak: {
+            mode: ['css', 'legacy'],
+            before: '.story-page', // Force a page break before each .story-page
+            avoid: ['img', 'p']
+        }
+    };
+
+    html2pdf()
+        .set(opt)
+        .from(clonedElement)
+        .toPdf()
+        .get('pdf')
+        .then((pdf) => {
+            console.log(`PDF generated with ${pdf.internal.getNumberOfPages()} pages`);
+            pdf.save();
+        })
+        .catch((error) => {
+            console.error('PDF generation failed:', error);
+        });
+});
 
             downloadBtn.classList.add('hidden');
         });
