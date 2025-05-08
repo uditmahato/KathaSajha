@@ -6,3 +6,4 @@ gunicorn
 flask[async]
 google.genai
 Pillow
+uvicorn

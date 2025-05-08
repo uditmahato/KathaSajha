@@ -8,6 +8,7 @@ import logging
 import asyncio
 from PIL import Image
 from io import BytesIO
+from asgiref.wsgi import WsgiToAsgi  # Import WsgiToAsgi
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -119,15 +120,8 @@ async def generate():
                         logger.info(f"Processing image response part {i} for paragraph {idx}: {part}")
                         if part.inline_data and part.inline_data.mime_type.startswith('image/'):
                             try:
-                                # Use the raw binary data as in the previous successful code
                                 images_base64.append(base64.b64encode(part.inline_data.data).decode('utf-8'))
                                 logger.info(f"Image data found and extracted for paragraph {idx} from part {i}.")
-                                # Optional PIL validation (commented out to avoid error)
-                                """
-                                img_bytes = part.inline_data.data
-                                Image.open(BytesIO(img_bytes)).verify()
-                                images_base64.append(base64.b64encode(img_bytes).decode('utf-8'))
-                                """
                                 break
                             except Exception as decode_error:
                                 logger.error(f"Error processing image data for paragraph {idx} from part {i}: {str(decode_error)}")
@@ -180,6 +174,10 @@ async def generate():
         else:
             return jsonify({'error': f'An unexpected error occurred: {str(e)}'}), 500
 
+# Wrap Flask app with WsgiToAsgi for Uvicorn
+asgi_app = WsgiToAsgi(app)
+
 if __name__ == '__main__':
-    logger.info("Starting Flask app...")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    logger.info("Starting Flask app with Uvicorn...")
+    import uvicorn
+    uvicorn.run(asgi_app, host='0.0.0.0', port=5000, reload=True)

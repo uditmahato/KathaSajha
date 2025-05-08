@@ -200,180 +200,196 @@
     </footer>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const generateBtn = document.getElementById('generateBtn');
-            const sampleBtn = document.getElementById('sampleBtn');
-            const storyPrompt = document.getElementById('storyPrompt');
-            const loadingIndicator = document.getElementById('loadingIndicator');
-            const storySection = document.getElementById('storySection');
-            const storyToDownload = document.getElementById('storyToDownload');
-            const storyTitle = document.getElementById('storyTitle');
-            const storyContent = document.getElementById('storyContent');
-            const downloadBtn = document.getElementById('downloadBtn');
+document.addEventListener('DOMContentLoaded', function() {
+    const generateBtn = document.getElementById('generateBtn');
+    const sampleBtn = document.getElementById('sampleBtn');
+    const storyPrompt = document.getElementById('storyPrompt');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const storySection = document.getElementById('storySection');
+    const storyToDownload = document.getElementById('storyToDownload');
+    const storyTitle = document.getElementById('storyTitle');
+    const storyContent = document.getElementById('storyContent');
+    const downloadBtn = document.getElementById('downloadBtn');
 
-            // Default image (simple grey square; replace with a base64 jungle-themed image)
-            const defaultImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAC9gF0Y3X9NgAAAABJRU5ErkJggg==';
+    // Default image (simple grey square; replace with a base64 jungle-themed image)
+    const defaultImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAC9gF0Y3X9NgAAAABJRU5ErkJggg==';
 
-            async function generateStory(prompt) {
-                if (!prompt.trim()) {
-                    alert('Please enter a story idea or prompt');
-                    return;
-                }
+    async function generateStory(prompt) {
+        if (!prompt.trim()) {
+            alert('Please enter a story idea or prompt');
+            return;
+        }
 
-                loadingIndicator.classList.remove('hidden');
-                storySection.classList.add('hidden');
-                storyContent.innerHTML = '';
-                storyTitle.textContent = '';
-                downloadBtn.classList.add('hidden');
+        loadingIndicator.classList.remove('hidden');
+        storySection.classList.add('hidden');
+        storyContent.innerHTML = '';
+        storyTitle.textContent = '';
+        downloadBtn.classList.add('hidden');
 
-                try {
-                    const response = await fetch('/generate', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ prompt })
-                    });
-                    const data = await response.json();
+        try {
+            const response = await fetch('/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt })
+            });
+            const data = await response.json();
 
-                    if (!response.ok || data.error) {
-                        const errorMsg = data.error || 'Failed to generate story. Unknown error.';
-                        const details = data.details ? ` Details: ${data.details}` : '';
-                        const safetyFeedback = data.safety_feedback ? ` Safety Feedback: ${data.safety_feedback}` : '';
-                        throw new Error(`${errorMsg}${details}${safetyFeedback}`);
-                    }
-
-                    const paragraphs = data.story.split(/\n\s*\n/).filter(p => p.trim() !== '');
-                    let htmlContent = '';
-
-                    paragraphs.forEach((paragraph, index) => {
-                        // Use default image if no image is provided or if image is invalid
-                        const imageBase64 = (data.images && data.images.length > index && !data.images[index].startsWith('BLOCKED:') && !data.images[index].startsWith('ERROR:')) 
-                            ? data.images[index] 
-                            : defaultImage;
-
-                        // Main flex container for image/text pair
-                        htmlContent += `<div class="story-paragraph-section">`;
-
-                        // Image container
-                        htmlContent += `<div class="image-container">`;
-                        htmlContent += `
-                            <img src="data:image/png;base64,${imageBase64}"
-                                 alt="Illustration for paragraph ${index + 1}"
-                                 class="story-image">
-                        `;
-                        htmlContent += `</div>`; // Close image-container
-
-                        // Text container
-                        htmlContent += `<div class="text-container">`;
-                        const formattedParagraph = paragraph.trim().replace(/\n/g, '<br>');
-                        htmlContent += `<p>${formattedParagraph}</p>`;
-                        htmlContent += `</div>`; // Close text-container
-
-                        htmlContent += `</div>`; // Close story-paragraph-section
-                    });
-
-                    storyTitle.textContent = data.title;
-                    storyContent.innerHTML = htmlContent;
-                    storySection.classList.remove('hidden');
-                    storySection.scrollIntoView({ behavior: 'smooth' });
-                    downloadBtn.classList.remove('hidden');
-
-                } catch (error) {
-                    console.error("Generation Error:", error);
-                    alert(`Error generating story or images: ${error.message}`);
-                    storySection.classList.add('hidden');
-                    downloadBtn.classList.add('hidden');
-                } finally {
-                    loadingIndicator.classList.add('hidden');
-                }
+            if (!response.ok || data.error) {
+                const errorMsg = data.error || 'Failed to generate story. Unknown error.';
+                const details = data.details ? ` Details: ${data.details}` : '';
+                const safetyFeedback = data.safety_feedback ? ` Safety Feedback: ${data.safety_feedback}` : '';
+                throw new Error(`${errorMsg}${details}${safetyFeedback}`);
             }
 
-            generateBtn.addEventListener('click', () => generateStory(storyPrompt.value));
-            sampleBtn.addEventListener('click', () => {
-                storyPrompt.value = 'Leo the Lion and Lily the Lost Girl';
-                generateStory(storyPrompt.value);
+            const paragraphs = data.story.split(/\n\s*\n/).filter(p => p.trim() !== '');
+            let htmlContent = '';
+
+            paragraphs.forEach((paragraph, index) => {
+                // Use default image if no image is provided or if image is invalid
+                const imageBase64 = (data.images && data.images.length > index && !data.images[index]?.startsWith('BLOCKED:') && !data.images[index]?.startsWith('ERROR:')) 
+                    ? data.images[index] 
+                    : defaultImage;
+
+                // Create a .story-page for each paragraph/image pair
+                htmlContent += `<div class="story-page">`;
+                htmlContent += `<div class="image-container">`;
+                htmlContent += `
+                    <img src="data:image/png;base64,${imageBase64}"
+                         alt="Illustration for paragraph ${index + 1}"
+                         class="story-image">
+                `;
+                htmlContent += `</div>`; // Close image-container
+                htmlContent += `<div class="text-container">`;
+                const formattedParagraph = paragraph.trim().replace(/\n/g, '<br>');
+                htmlContent += `<p>${formattedParagraph}</p>`;
+                htmlContent += `</div>`; // Close text-container
+                htmlContent += `</div>`; // Close story-page
             });
 
-          downloadBtn.addEventListener('click', () => {
-    const element = document.getElementById('storyToDownload');
-    if (!element) {
-        console.error('Element #storyToDownload not found!');
-        return;
-    }
+            storyTitle.textContent = data.title;
+            storyContent.innerHTML = htmlContent;
+            storySection.classList.remove('hidden');
+            storySection.scrollIntoView({ behavior: 'smooth' });
+            downloadBtn.classList.remove('hidden');
 
-    // Clone the element to avoid modifying the original DOM
-    const clonedElement = element.cloneNode(true);
-
-    // Remove the "Save Story" button (adjust selector as needed)
-    const saveButton = clonedElement.querySelector('.save-story-btn');
-    if (saveButton) {
-        saveButton.remove();
-    }
-
-    // Adjust styles to ensure content fills the page
-    const pages = clonedElement.querySelectorAll('.story-page');
-    pages.forEach(page => {
-        page.style.width = '8.5in'; // Full page width
-        page.style.height = '11in'; // Full page height
-        page.style.margin = '0'; // Remove any internal margins
-        page.style.padding = '0'; // Remove padding
-        page.style.boxSizing = 'border-box'; // Ensure dimensions include borders
-
-        const img = page.querySelector('img');
-        const text = page.querySelector('p');
-        if (img && text) {
-            // Set image to take 60% of the height, text 40%
-            img.style.width = '100%';
-            img.style.height = '60%'; // 60% of 11in = 6.6in
-            img.style.objectFit = 'cover'; // Scale image to fill area
-            img.style.margin = '0';
-
-            text.style.width = '100%';
-            text.style.height = '40%'; // 40% of 11in = 4.4in
-            text.style.margin = '0';
-            text.style.padding = '0.2in'; // Small padding for readability
-            text.style.boxSizing = 'border-box';
-            text.style.fontSize = '14px'; // Adjust font size to fit
-            text.style.overflow = 'hidden'; // Prevent overflow
+        } catch (error) {
+            console.error("Generation Error:", error);
+            alert(`Error generating story or images: ${error.message}`);
+            storySection.classList.add('hidden');
+            downloadBtn.classList.add('hidden');
+        } finally {
+            loadingIndicator.classList.add('hidden');
         }
+    }
+
+    generateBtn.addEventListener('click', () => generateStory(storyPrompt.value));
+    sampleBtn.addEventListener('click', () => {
+        storyPrompt.value = 'Leo the Lion and Lily the Lost Girl';
+        generateStory(storyPrompt.value);
     });
 
-    const opt = {
-        margin: 0, // Remove margins to use the full page
-        filename: `${storyTitle.textContent.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'story'}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-            scale: 2,
-            useCORS: true,
-            logging: true
-        },
-        jsPDF: {
-            unit: 'in',
-            format: 'letter',
-            orientation: 'portrait'
-        },
-        pagebreak: {
-            mode: ['css', 'legacy'],
-            before: '.story-page', // Force a page break before each .story-page
-            avoid: ['img', 'p']
+    downloadBtn.addEventListener('click', () => {
+        const element = document.getElementById('storyToDownload');
+        if (!element) {
+            console.error('Element #storyToDownload not found!');
+            return;
         }
-    };
 
-    html2pdf()
-        .set(opt)
-        .from(clonedElement)
-        .toPdf()
-        .get('pdf')
-        .then((pdf) => {
-            console.log(`PDF generated with ${pdf.internal.getNumberOfPages()} pages`);
-            pdf.save();
-        })
-        .catch((error) => {
-            console.error('PDF generation failed:', error);
+        // Clone the element to avoid modifying the original DOM
+        const clonedElement = element.cloneNode(true);
+
+        // Remove unwanted elements
+        const downloadBtnClone = clonedElement.querySelector('#downloadBtn');
+        if (downloadBtnClone) {
+            downloadBtnClone.remove();
+        }
+
+        // Remove the title from the cloned element to avoid duplication
+        const titleClone = clonedElement.querySelector('#storyTitle');
+        if (titleClone) {
+            titleClone.remove();
+        }
+
+        // Add the title as a separate header on the first page
+        const title = storyTitle.textContent || 'Story';
+        const titleDiv = document.createElement('div');
+        titleDiv.innerHTML = `<h2 style="font-family: 'Playfair Display', serif; font-size: 24px; text-align: center; color: #704214; margin-bottom: 1rem;">${title}</h2>`;
+        clonedElement.insertBefore(titleDiv, clonedElement.firstChild);
+
+        // Ensure each .story-page is styled correctly for PDF
+        const pages = clonedElement.querySelectorAll('.story-page');
+        pages.forEach((page, index) => {
+            page.style.width = '8.5in';
+            page.style.height = '11in';
+            page.style.margin = '0';
+            page.style.padding = '0.5in';
+            page.style.boxSizing = 'border-box';
+            page.style.display = 'flex';
+            page.style.flexDirection = 'column';
+            page.style.pageBreakBefore = index === 0 ? 'auto' : 'always';
+            page.style.pageBreakInside = 'avoid';
+
+            const img = page.querySelector('img');
+            const text = page.querySelector('p');
+            if (img && text) {
+                img.style.width = '100%';
+                img.style.height = '60%'; // 6.6in
+                img.style.objectFit = 'contain'; // Changed to 'contain' to avoid cropping
+                img.style.margin = '0 auto';
+                img.style.borderRadius = '0.375rem';
+                img.style.boxShadow = '2px 2px 5px rgba(112, 66, 20, 0.2)';
+
+                text.style.width = '100%';
+                text.style.height = 'auto'; // Allow text to take natural height
+                text.style.margin = '0.5in 0 0 0';
+                text.style.padding = '0';
+                text.style.boxSizing = 'border-box';
+                text.style.fontSize = '14px';
+                text.style.lineHeight = '1.5';
+                text.style.fontFamily = 'Merriweather, Georgia, serif';
+                text.style.color = '#704214';
+                text.style.overflow = 'visible'; // Allow text to flow naturally
+            }
         });
+
+        const opt = {
+            margin: [0.5, 0.5, 0.5, 0.5], // 0.5in margins
+            filename: `${storyTitle.textContent.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'story'}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: {
+                scale: 2,
+                useCORS: true,
+                logging: true
+            },
+            jsPDF: {
+                unit: 'in',
+                format: 'letter',
+                orientation: 'portrait'
+            },
+            pagebreak: {
+                mode: ['css', 'legacy'],
+                before: '.story-page',
+                avoid: ['img', 'p', '.image-container', '.text-container']
+            }
+        };
+
+        html2pdf()
+            .set(opt)
+            .from(clonedElement)
+            .toPdf()
+            .get('pdf')
+            .then((pdf) => {
+                console.log(`PDF generated with ${pdf.internal.getNumberOfPages()} pages`);
+                pdf.save();
+            })
+            .catch((error) => {
+                console.error('PDF generation failed:', error);
+                alert('Failed to generate PDF. Please try again.');
+            });
+    });
+
+    downloadBtn.classList.add('hidden');
 });
-
-            downloadBtn.classList.add('hidden');
-        });
     </script>
 </body>
 </html>
