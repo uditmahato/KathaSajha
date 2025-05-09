@@ -203,72 +203,82 @@
             const defaultImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAC9gF0Y3X9NgAAAABJRU5ErkJggg==';
 
             async function generateStory(prompt) {
-                if (!prompt.trim()) {
-                    alert('Please enter a story idea');
-                    return;
-                }
+    if (!prompt.trim()) return alert('Please enter a story idea');
 
-                loadingIndicator.classList.remove('hidden');
-                storySection.classList.add('hidden');
-                storyContent.innerHTML = '';
-                storyTitle.textContent = '';
-                downloadBtn.classList.add('hidden');
+    loadingIndicator.classList.remove('hidden');
+    storySection.classList.add('hidden');
+    storyContent.innerHTML = '';
+    storyTitle.textContent = '';
+    downloadBtn.classList.add('hidden'); // Hide download button during generation
 
-                try {
-                    const response = await fetch('http://localhost:5000/generate', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ prompt }),
-                    });
+    try {
+        // --- Actual API Call to Backend ---
+        const response = await fetch('/generate', { // Assuming backend is on the same origin/port. Adjust URL if needed.
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ prompt: prompt })
+        });
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! Status: ${response.status}`);
-                    }
+        if (!response.ok) {
+             // Handle potential errors from the backend
+            const errorData = await response.json();
+            // Log the error response from the server if available
+            console.error('Backend Error Response:', errorData);
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
 
-                    const data = await response.json();
+        const data = await response.json();
+        // --- End of API Call ---
 
-                    if (data.error) {
-                        throw new Error(data.error + (data.details ? `: ${data.details}` : ''));
-                    }
+        // Process the response from the backend
+        const paragraphs = data.paragraphs; // Backend provides paragraphs as an array
+        const images = data.images;       // Backend provides images as an array
+        const title = data.title;         // Backend provides the title
 
-                    const paragraphs = data.paragraphs || data.story.split(/\n\s*\n/).filter(p => p.trim() !== '');
-                    let htmlContent = '';
+        let htmlContent = '';
 
-                    paragraphs.forEach((paragraph, index) => {
-                        const imageBase64 = data.images[index];
-                        const isDefault = !imageBase64 || imageBase64 === defaultImage;
+        if (!paragraphs || paragraphs.length === 0) {
+             storyContent.innerHTML = '<p class="text-center text-red-500">Could not generate story content.</p>';
+             storyTitle.textContent = 'Error';
+        } else {
+             paragraphs.forEach((paragraph, index) => {
+                 // Use the image corresponding to the paragraph index if available
+                 const imageBase64 = images && images[index] ? `data:image/jpeg;base64,${images[index]}` : defaultImage; // Add data URI prefix
+                 const isDefault = imageBase64 === defaultImage;
 
-                        if (!imageBase64) {
-                            console.warn(`No image generated for paragraph ${index}: ${data.image_descriptions[index] || 'No description'}`);
-                        }
+                 htmlContent += `
+                     <div class="story-page ${isDefault ? 'text-only' : ''}">
+                         ${!isDefault ? `
+                         <div class="image-container text-center mb-4">
+                             <img src="${imageBase64}" alt="Illustration" class="story-image mx-auto" style="max-width:100%; height:auto;">
+                         </div>` : ''}
+                         <div class="text-container px-4 py-2">
+                             <p>${paragraph.trim().replace(/\n/g, '<br>')}</p>
+                         </div>
+                     </div>
+                 `;
+             });
 
-                        htmlContent += `
-                            <div class="story-page ${isDefault ? 'text-only' : ''}">
-                                ${!isDefault ? `
-                                <div class="image-container">
-                                    <img src="data:image/jpeg;base64,${imageBase64}" alt="Illustration" class="story-image ${isDefault ? 'default-image' : ''}">
-                                </div>` : ''}
-                                <div class="text-container">
-                                    <p>${paragraph.trim().replace(/\n/g, '<br>')}</p>
-                                </div>
-                            </div>
-                        `;
-                    });
+             storyTitle.textContent = title;
+             storyContent.innerHTML = htmlContent;
+             downloadBtn.classList.remove('hidden'); // Show download button after generation
+        }
 
-                    storyTitle.textContent = data.title || 'Untitled Story';
-                    storyContent.innerHTML = htmlContent;
-                    storySection.classList.remove('hidden');
-                    downloadBtn.classList.remove('hidden');
+        storySection.classList.remove('hidden');
 
-                } catch (error) {
-                    console.error('Error generating story:', error);
-                    alert(`Failed to generate story: ${error.message}`);
-                } finally {
-                    loadingIndicator.classList.add('hidden');
-                }
-            }
+
+    } catch (error) {
+        console.error("Error:", error);
+        alert(`Error generating story: ${error.message}`);
+         // Ensure story section is hidden if there was an error
+        storySection.classList.add('hidden');
+
+    } finally {
+        loadingIndicator.classList.add('hidden');
+    }
+}
 
             downloadBtn.addEventListener('click', () => {
                 const element = document.getElementById('storyToDownload').cloneNode(true);
