@@ -203,8 +203,11 @@
             const defaultImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAC9gF0Y3X9NgAAAABJRU5ErkJggg==';
 
             async function generateStory(prompt) {
-                if (!prompt.trim()) return alert('Please enter a story idea');
-                
+                if (!prompt.trim()) {
+                    alert('Please enter a story idea');
+                    return;
+                }
+
                 loadingIndicator.classList.remove('hidden');
                 storySection.classList.add('hidden');
                 storyContent.innerHTML = '';
@@ -212,25 +215,40 @@
                 downloadBtn.classList.add('hidden');
 
                 try {
-                    // Simulated API response
-                    const data = {
-                        title: "Vitasta's Virtual Vet & Udit's Amazing App",
-                        story: document.querySelector('[filename="generated (2).pdf"]').innerText,
-                        images: new Array(7).fill(defaultImage)
-                    };
+                    const response = await fetch('http://localhost:5000/generate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ prompt }),
+                    });
 
-                    const paragraphs = data.story.split(/\n\s*\n/).filter(p => p.trim() !== '');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.error) {
+                        throw new Error(data.error + (data.details ? `: ${data.details}` : ''));
+                    }
+
+                    const paragraphs = data.paragraphs || data.story.split(/\n\s*\n/).filter(p => p.trim() !== '');
                     let htmlContent = '';
 
                     paragraphs.forEach((paragraph, index) => {
-                        const imageBase64 = data.images[index] || defaultImage;
-                        const isDefault = imageBase64 === defaultImage;
+                        const imageBase64 = data.images[index];
+                        const isDefault = !imageBase64 || imageBase64 === defaultImage;
+
+                        if (!imageBase64) {
+                            console.warn(`No image generated for paragraph ${index}: ${data.image_descriptions[index] || 'No description'}`);
+                        }
 
                         htmlContent += `
                             <div class="story-page ${isDefault ? 'text-only' : ''}">
                                 ${!isDefault ? `
                                 <div class="image-container">
-                                    <img src="${imageBase64}" alt="Illustration" class="story-image ${isDefault ? 'default-image' : ''}">
+                                    <img src="data:image/jpeg;base64,${imageBase64}" alt="Illustration" class="story-image ${isDefault ? 'default-image' : ''}">
                                 </div>` : ''}
                                 <div class="text-container">
                                     <p>${paragraph.trim().replace(/\n/g, '<br>')}</p>
@@ -239,14 +257,14 @@
                         `;
                     });
 
-                    storyTitle.textContent = data.title;
+                    storyTitle.textContent = data.title || 'Untitled Story';
                     storyContent.innerHTML = htmlContent;
                     storySection.classList.remove('hidden');
                     downloadBtn.classList.remove('hidden');
 
                 } catch (error) {
-                    console.error("Error:", error);
-                    alert(`Error: ${error.message}`);
+                    console.error('Error generating story:', error);
+                    alert(`Failed to generate story: ${error.message}`);
                 } finally {
                     loadingIndicator.classList.add('hidden');
                 }
