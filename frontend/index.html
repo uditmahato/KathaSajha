@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KathaSajha - AI Story Generator</title>
+    <!-- Site-level social preview. The /shared/{slug} route replaces everything
+         between these markers with the shared story's own title and cover, so a
+         forwarded link previews as that child's story rather than a bare URL. -->
+    <!--SOCIAL_META_START-->
+    <meta name="description" content="Turn one idea into an illustrated children's story, in English or Nepali, starring your child as the hero.">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="KathaSajha">
+    <meta property="og:title" content="KathaSajha - illustrated children's stories in English and Nepali">
+    <meta property="og:description" content="Turn one idea into an illustrated children's story, in English or Nepali, starring your child as the hero.">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--SOCIAL_META_END-->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <!-- html2pdf (~1MB) is loaded on demand by app.js when someone saves a PDF.
