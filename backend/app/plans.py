@@ -22,6 +22,9 @@ class Plan:
     daily_stories: int | None  # None = use the configured free allowance
     monthly_price_usd: float
     monthly_price_npr: int
+    # The daily figure exists to stop bursts; this is the real allowance and the
+    # one that bounds cost. None = use the configured free monthly allowance.
+    monthly_stories: int | None = None
     features: list[str] = field(default_factory=list)
     purchasable: bool = False
     highlight: bool = False
@@ -33,10 +36,11 @@ PLANS: dict[str, Plan] = {
         name="Free",
         tagline="Enough for a story at bedtime",
         daily_stories=None,
+        monthly_stories=None,
         monthly_price_usd=0.0,
         monthly_price_npr=0,
         features=[
-            "3 illustrated stories every day",
+            "10 illustrated stories a month",
             "English and Nepali",
             "Your child as the hero",
             "PDF download and family share links",
@@ -48,10 +52,11 @@ PLANS: dict[str, Plan] = {
         name="Plus",
         tagline="For families who read together every night",
         daily_stories=30,
+        monthly_stories=100,
         monthly_price_usd=6.0,
         monthly_price_npr=799,
         features=[
-            "30 stories a day",
+            "100 stories a month",
             "Longer stories with more illustrations",
             "Priority generation, even at busy times",
             "Print-ready PDF quality",
@@ -73,3 +78,10 @@ def daily_stories_for(code: str) -> int:
     if plan.daily_stories is None:
         return get_settings().free_daily_stories
     return plan.daily_stories
+
+
+def monthly_stories_for(code: str) -> int:
+    plan = get_plan(code)
+    if plan.monthly_stories is None:
+        return get_settings().free_monthly_stories
+    return plan.monthly_stories

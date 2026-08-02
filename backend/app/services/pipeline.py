@@ -13,7 +13,7 @@ from ..config import get_settings
 from ..db import get_session_factory
 from ..models import GenerationEvent, GenerationJob, Story, StoryPage
 from ..storage import get_storage
-from .base import GenerationError, GenerationProvider, StoryRequest
+from .base import GenerationError, GenerationProvider, StoryRequest, Usage
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,47 @@ def reset_provider() -> None:
     """Test helper."""
     global _provider
     _provider = None
+
+
+async def _record_usage(story_id: str, provider_name: str, usage: Usage) -> None:
+    """Attach consumption to this story's ledger entry.
+
+    Best-effort telemetry: a failure here must never fail a story the customer
+    already has. Units are stored rather than money, so cost can be recomputed
+    for historical rows when rates are set or change.
+    """
+    try:
+        settings = get_settings()
+        async with get_session_factory()() as session:
+            event = (
+                await session.execute(select(GenerationEvent).where(GenerationEvent.story_id == story_id))
+            ).scalar_one_or_none()
+            if event is None:
+                return
+            event.provider = provider_name
+            event.input_tokens = usage.input_tokens
+            event.output_tokens = usage.output_tokens
+            event.images = usage.images
+            await session.commit()
+        cost = settings.estimate_cost_usd(
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            images=usage.images,
+        )
+        logger.info(
+            "Generation cost recorded",
+            extra={
+                "story_id": story_id,
+                "provider": provider_name,
+                "input_tokens": usage.input_tokens,
+                "output_tokens": usage.output_tokens,
+                "images": usage.images,
+                "estimated_cost_usd": cost,
+                "rates_configured": settings.cost_rates_configured,
+            },
+        )
+    except Exception as e:
+        logger.error("Could not record usage for story %s: %s", story_id, e, exc_info=True)
 
 
 async def _update_job(job_id: str, **fields) -> None:
@@ -103,13 +144,14 @@ async def run_generation(story_id: str) -> None:
         storage = get_storage()
         semaphore = asyncio.Semaphore(settings.image_concurrency)
         done_count = 0
+        total_usage = draft.usage
         count_lock = asyncio.Lock()
 
         # image_error is user-visible (owner UI); keep it generic and log the detail.
         GENERIC_IMAGE_ERROR = "The illustration for this page could not be generated."
 
         async def illustrate_one(position: int, image_prompt: str) -> None:
-            nonlocal done_count
+            nonlocal done_count, total_usage
             async with semaphore:
                 image = await provider.illustrate(image_prompt, title=draft.title, position=position)
             url, err = "", ""
@@ -139,12 +181,15 @@ async def run_generation(story_id: str) -> None:
                     page.image_error = err
                     await session.commit()
             # Progress write stays inside the lock so a slower task can't
-            # overwrite a higher count with a lower one.
+            # overwrite a higher count with a lower one. Usage accumulates in
+            # the same critical section for the same reason.
             async with count_lock:
                 done_count += 1
+                total_usage = total_usage + image.usage
                 await _update_job(job_id, progress_current=done_count)
 
         await asyncio.gather(*(illustrate_one(i, p) for i, p in enumerate(draft.image_prompts)))
+        await _record_usage(story_id, provider.name, total_usage)
 
         async with factory() as session:
             story = await session.get(Story, story_id)

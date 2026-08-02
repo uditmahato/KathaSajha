@@ -11,11 +11,28 @@ import logging
 from pydantic import BaseModel, Field
 
 from ..config import get_settings
-from .base import GeneratedImage, GenerationError, GenerationProvider, StoryDraft, StoryRequest
+from .base import GeneratedImage, GenerationError, GenerationProvider, StoryDraft, StoryRequest, Usage
 
 logger = logging.getLogger(__name__)
 
 _RETRYABLE_MARKERS = ("429", "500", "503", "RESOURCE_EXHAUSTED", "UNAVAILABLE", "DEADLINE")
+
+
+def _usage_of(resp, *, images: int = 0) -> Usage:
+    """Read token counts off an SDK response.
+
+    Defensive on purpose: usage metadata is telemetry, not product. A field
+    rename in the SDK must degrade the numbers, never fail a generation the
+    customer is waiting for.
+    """
+    meta = getattr(resp, "usage_metadata", None)
+    if meta is None:
+        return Usage(images=images)
+    return Usage(
+        input_tokens=int(getattr(meta, "prompt_token_count", 0) or 0),
+        output_tokens=int(getattr(meta, "candidates_token_count", 0) or 0),
+        images=images,
+    )
 
 
 class _StorySchema(BaseModel):
@@ -125,6 +142,7 @@ class GeminiProvider(GenerationProvider):
             paragraphs=paragraphs,
             image_prompts=prompts,
             moral=parsed.moral,
+            usage=_usage_of(resp),
         )
 
     async def illustrate(self, image_prompt: str, *, title: str, position: int) -> GeneratedImage:
@@ -148,15 +166,19 @@ class GeminiProvider(GenerationProvider):
             logger.error("Illustration %d failed: %s", position, e)
             return GeneratedImage(error=f"Image generation failed: {e}")
 
+        # The call was billed whether or not usable bytes came back, so usage is
+        # attached to the failure paths too. Counting only successes would make
+        # safety-blocked images look free.
+        usage = _usage_of(resp, images=1)
         try:
             candidates = resp.candidates or []
             for cand in candidates:
                 for part in (cand.content.parts or []) if cand.content else []:
                     inline = getattr(part, "inline_data", None)
                     if inline and inline.mime_type and inline.mime_type.startswith("image/"):
-                        return GeneratedImage(data=inline.data, mime=inline.mime_type)
+                        return GeneratedImage(data=inline.data, mime=inline.mime_type, usage=usage)
             feedback = getattr(resp, "prompt_feedback", None)
-            return GeneratedImage(error=f"No image in response (feedback: {feedback})")
+            return GeneratedImage(error=f"No image in response (feedback: {feedback})", usage=usage)
         except Exception as e:  # defensive: never let parsing kill the pipeline
             logger.error("Illustration %d parse error: %s", position, e, exc_info=True)
             return GeneratedImage(error=f"Image response parse error: {e}")

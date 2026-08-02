@@ -11,7 +11,12 @@ from ..config import get_settings
 from ..deps import CurrentUser, DbSession
 from ..jobs import enqueue_generation
 from ..models import GenerationEvent, GenerationJob, Story, StoryPage, User
-from ..quota import enforce_burst_limit, enforce_daily_quota, enforce_global_budget
+from ..quota import (
+    enforce_burst_limit,
+    enforce_daily_quota,
+    enforce_global_budget,
+    enforce_monthly_quota,
+)
 from ..routers.jobs import fail_stale_jobs_for_user, fail_story_job_if_stale
 from ..schemas import (
     CreateStoryRequest,
@@ -41,6 +46,9 @@ async def create_story(body: CreateStoryRequest, user: CurrentUser, db: DbSessio
     # otherwise parallel requests all pass the quota count-check (TOCTOU).
     # SQLite compiles FOR UPDATE away, but it is single-writer anyway.
     await db.execute(select(User).where(User.id == user.id).with_for_update())
+    # Monthly first: if the month is gone, telling someone their allowance
+    # "resets tomorrow" would simply be false.
+    await enforce_monthly_quota(db, user)
     await enforce_daily_quota(db, user)
 
     story = Story(

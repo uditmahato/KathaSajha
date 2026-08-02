@@ -84,6 +84,13 @@ class GenerationEvent(Base):
     # A refunded event does not count against the user's daily allowance.
     refunded: Mapped[bool] = mapped_column(Boolean, default=False)
     refund_reason: Mapped[str] = mapped_column(String(200), default="")
+    # What this generation consumed. Units rather than money, because prices
+    # change and a stored dollar figure silently rots; cost is recomputed from
+    # configured rates. Zero for the mock provider, which is genuinely free.
+    provider: Mapped[str] = mapped_column(String(20), default="", server_default="")
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    images: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
     __table_args__ = (

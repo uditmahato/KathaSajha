@@ -112,7 +112,7 @@
             err.status = resp.status;
             // The server marks the daily wall specifically; it deserves an offer,
             // not the same treatment as a validation error.
-            err.quotaExhausted = resp.headers.get('X-Quota-Exhausted') === 'daily';
+            err.quotaExhausted = ['daily', 'monthly'].indexOf(resp.headers.get('X-Quota-Exhausted')) !== -1;
             throw err;
         }
         return body;
@@ -151,7 +151,12 @@
     async function refreshUsage() {
         try {
             const u = await api('/api/auth/usage');
-            els.usageBadge.textContent = u.remaining_today + ' / ' + u.daily_limit + ' stories left today';
+            // The monthly allowance is the real one; the daily cap only smooths
+            // bursts. Show whichever is actually binding, so the number on screen
+            // is the number that will stop them.
+            els.usageBadge.textContent = u.remaining_today < u.remaining_this_month
+                ? u.remaining_today + ' stories left today'
+                : u.remaining_this_month + ' of ' + u.monthly_limit + ' stories left this month';
         } catch (_) { els.usageBadge.textContent = ''; }
     }
 

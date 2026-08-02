@@ -87,6 +87,9 @@ class UsageOut(BaseModel):
     stories_today: int
     daily_limit: int
     remaining_today: int
+    stories_this_month: int
+    monthly_limit: int
+    remaining_this_month: int
     plan: str = "free"
 
 

@@ -66,6 +66,21 @@ class Settings(BaseSettings):
     # unconditionally lets anyone rotate it to bypass the IP-keyed auth limits.
     trusted_proxy_ips: str = ""
     free_daily_stories: int = 3
+    # The daily cap stops bursts; this one bounds what a free account can
+    # actually cost. At 3/day with no monthly bound, a free user could take 90
+    # stories a month -- roughly 450 illustrations -- which at any plausible
+    # per-image price exceeds what the paid tier charges.
+    free_monthly_stories: int = 10
+
+    # --- Unit cost telemetry ---
+    # Rates from the provider's pricing page, in USD. Left at 0 deliberately:
+    # a wrong hardcoded price is worse than an obviously-unset one, and these
+    # change. Token and image COUNTS are always recorded regardless, so cost can
+    # be recomputed for past generations once these are set.
+    price_per_1m_input_tokens_usd: float = 0.0
+    price_per_1m_output_tokens_usd: float = 0.0
+    price_per_image_usd: float = 0.0
+
     # Platform-wide ceiling on paid generations per UTC day. Per-user limits bound
     # one account; this bounds the bill when someone scripts thousands of signups.
     # Set to 0 to disable (not advisable once a real API key is configured).
@@ -103,6 +118,25 @@ class Settings(BaseSettings):
     @property
     def trusted_proxy_list(self) -> list[str]:
         return [p.strip() for p in self.trusted_proxy_ips.split(",") if p.strip()]
+
+    @property
+    def cost_rates_configured(self) -> bool:
+        """False means the numbers below are unset, not that generation is free."""
+        return any(
+            (
+                self.price_per_1m_input_tokens_usd,
+                self.price_per_1m_output_tokens_usd,
+                self.price_per_image_usd,
+            )
+        )
+
+    def estimate_cost_usd(self, *, input_tokens: int, output_tokens: int, images: int) -> float:
+        return round(
+            (input_tokens / 1_000_000) * self.price_per_1m_input_tokens_usd
+            + (output_tokens / 1_000_000) * self.price_per_1m_output_tokens_usd
+            + images * self.price_per_image_usd,
+            6,
+        )
 
 
 @lru_cache

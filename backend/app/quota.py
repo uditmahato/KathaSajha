@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import get_settings
 from .models import GenerationEvent, User
-from .plans import daily_stories_for
+from .plans import daily_stories_for, monthly_stories_for
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +32,17 @@ def daily_limit_for(user: User) -> int:
     return daily_stories_for(user.plan)
 
 
+def monthly_limit_for(user: User) -> int:
+    return monthly_stories_for(user.plan)
+
+
 def _utc_day_start() -> datetime:
     return datetime.combine(datetime.now(UTC).date(), time.min, tzinfo=UTC)
+
+
+def _utc_month_start() -> datetime:
+    today = datetime.now(UTC).date()
+    return datetime.combine(today.replace(day=1), time.min, tzinfo=UTC)
 
 
 async def stories_created_today(db: AsyncSession, user: User) -> int:
@@ -53,6 +62,19 @@ async def stories_created_today(db: AsyncSession, user: User) -> int:
     return int(result.scalar_one())
 
 
+async def stories_created_this_month(db: AsyncSession, user: User) -> int:
+    """Same ledger, calendar-month window. This is the bound that actually caps
+    what an account can cost; the daily figure only smooths bursts."""
+    result = await db.execute(
+        select(func.count(GenerationEvent.id)).where(
+            GenerationEvent.user_id == user.id,
+            GenerationEvent.created_at >= _utc_month_start(),
+            GenerationEvent.refunded.is_(False),
+        )
+    )
+    return int(result.scalar_one())
+
+
 async def enforce_daily_quota(db: AsyncSession, user: User) -> None:
     limit = daily_limit_for(user)
     used = await stories_created_today(db, user)
@@ -64,6 +86,22 @@ async def enforce_daily_quota(db: AsyncSession, user: User) -> None:
                 "Your allowance resets tomorrow."
             ),
             headers={"X-Quota-Exhausted": "daily"},
+        )
+
+
+async def enforce_monthly_quota(db: AsyncSession, user: User) -> None:
+    limit = monthly_limit_for(user)
+    used = await stories_created_this_month(db, user)
+    if used >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                f"You've used all {limit} stories on your {user.plan} plan this month. "
+                "Your allowance resets at the start of next month."
+            ),
+            # Same signal as the daily wall: the frontend answers it with an
+            # upgrade offer rather than a red error line.
+            headers={"X-Quota-Exhausted": "monthly"},
         )
 
 

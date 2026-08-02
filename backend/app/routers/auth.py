@@ -9,7 +9,13 @@ from sqlalchemy import select, update
 from ..config import get_settings
 from ..deps import CurrentUser, DbSession
 from ..models import PasswordResetToken, User
-from ..quota import daily_limit_for, enforce_auth_attempt_limit, stories_created_today
+from ..quota import (
+    daily_limit_for,
+    enforce_auth_attempt_limit,
+    monthly_limit_for,
+    stories_created_this_month,
+    stories_created_today,
+)
 from ..schemas import (
     ChangePasswordRequest,
     ChangePasswordResponse,
@@ -187,9 +193,14 @@ async def me(user: CurrentUser):
 async def usage(user: CurrentUser, db: DbSession):
     used = await stories_created_today(db, user)
     limit = daily_limit_for(user)
+    used_month = await stories_created_this_month(db, user)
+    limit_month = monthly_limit_for(user)
     return UsageOut(
         stories_today=used,
         daily_limit=limit,
         remaining_today=max(0, limit - used),
+        stories_this_month=used_month,
+        monthly_limit=limit_month,
+        remaining_this_month=max(0, limit_month - used_month),
         plan=user.plan,
     )

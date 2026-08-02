@@ -1,7 +1,29 @@
 """Generation provider contract shared by Gemini and mock implementations."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+
+@dataclass
+class Usage:
+    """What a provider call actually consumed.
+
+    Units, not money. Prices change and vary by model, so cost is derived later
+    from configured rates; the units are the durable record. A provider that
+    reports nothing leaves these at zero, which reads as "free" and is correct
+    for the mock.
+    """
+
+    input_tokens: int = 0
+    output_tokens: int = 0
+    images: int = 0
+
+    def __add__(self, other: "Usage") -> "Usage":
+        return Usage(
+            input_tokens=self.input_tokens + other.input_tokens,
+            output_tokens=self.output_tokens + other.output_tokens,
+            images=self.images + other.images,
+        )
 
 
 @dataclass
@@ -10,6 +32,7 @@ class StoryDraft:
     paragraphs: list[str]
     image_prompts: list[str]  # one per paragraph, ready to feed the image model
     moral: str = ""
+    usage: Usage = field(default_factory=Usage)
 
 
 @dataclass
@@ -17,6 +40,7 @@ class GeneratedImage:
     data: bytes | None = None
     mime: str = "image/png"
     error: str = ""
+    usage: Usage = field(default_factory=Usage)
 
     @property
     def ok(self) -> bool:
