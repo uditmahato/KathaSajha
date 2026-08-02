@@ -8,6 +8,7 @@ import asyncio
 import html
 import json
 import logging
+import mimetypes
 import os
 import re
 from contextlib import asynccontextmanager
@@ -34,6 +35,15 @@ configure_logging()
 logger = logging.getLogger(__name__)
 
 FRONTEND_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
+
+# StaticFiles asks the OS for extension -> MIME mappings. On Windows that means
+# the registry, where .js is commonly registered as text/plain; combined with the
+# X-Content-Type-Options: nosniff header set below, the browser then refuses to
+# execute the SPA and every page renders blank with no console error. Pin the
+# handful of types we serve so behaviour cannot depend on the host machine.
+mimetypes.add_type("text/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
+mimetypes.add_type("image/svg+xml", ".svg")
 
 
 @asynccontextmanager

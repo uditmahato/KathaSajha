@@ -113,3 +113,24 @@ async def test_password_over_72_bytes_rejected(client):
         json={"email": "long@example.com", "password": "x" * 100},
     )
     assert r.status_code == 422
+
+
+async def test_spa_javascript_is_served_as_javascript(client):
+    """A wrong MIME type on app.js is fatal, not cosmetic.
+
+    StaticFiles asks the OS for extension -> MIME mappings. Windows registers
+    .js as text/plain, and combined with the X-Content-Type-Options: nosniff
+    header the browser then refuses to execute the SPA: every page renders
+    blank, no listeners attach, and nothing is logged to the console. Observed
+    live on a Windows dev machine before the types were pinned.
+    """
+    r = await client.get("/assets/app.js")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/javascript"), r.headers["content-type"]
+    assert r.headers["x-content-type-options"] == "nosniff"
+
+
+async def test_spa_stylesheet_is_served_as_css(client):
+    r = await client.get("/assets/styles.css")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/css"), r.headers["content-type"]
