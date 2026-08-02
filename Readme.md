@@ -1,186 +1,139 @@
-# KathaSajha - AI Story Generator
+# KathaSajha — AI Story Generator (कथा साझा)
 
-KathaSajha (कथा साझा) is a Flask-based web application that generates illustrated children's stories from user prompts. Users input a story idea, and the app creates a multi-paragraph tale with AI-generated images, downloadable as a PDF. The frontend features a parchment-themed UI with Tailwind CSS, custom fonts, and client-side PDF generation, while the Flask backend handles story and image generation.
+KathaSajha generates illustrated children's stories from a prompt, in English or Nepali. It is built as a production-grade system: FastAPI API, background job workers, Postgres, Redis, per-user accounts with daily quotas, and pluggable AI providers, all wired together with Docker Compose.
 
-## Features
-
-- **Story Generation**: Enter a prompt to generate a unique story with multiple paragraphs.
-- **Illustrations**: Each paragraph is paired with an AI-generated image (or a default image if generation fails).
-- **PDF Download**: Export stories and images as a formatted PDF using `html2pdf.js`.
-- **Responsive Design**: Mobile-friendly layout with a vintage book aesthetic.
-- **Sample Prompt**: Pre-fill with an example prompt ("Leo the Lion and Lily the Lost Girl") for testing.
-- **Custom Styling**: Uses Tailwind CSS and custom CSS for spinner, image-text layout, and PDF formatting.
-
-## Project Structure
+## Architecture
 
 ```
-kathasajha/
-├── app.py                # Flask backend with /generate endpoint
-├── templates/
-│   └── index.html        # Frontend HTML with JS and Tailwind CSS
-├── static/
-│   └── css/
-│       └── styles.css    # Custom CSS for spinner, story layout, and print styles
-├── .env                  # Environment variables (e.g., AI API keys)
-├── requirements.txt      # Python dependencies
-└── README.md             # Project documentation
+                        ┌────────────────────────────────────────────┐
+ Browser (SPA)          │                Docker Compose              │
+ frontend/  ────────►   │  api (FastAPI/uvicorn)   worker (ARQ)      │
+  - auth, create,       │      │        │              │             │
+    progress, library,  │      │        └── enqueue ───┤             │
+    share, PDF          │      ▼                       ▼             │
+                        │  Postgres 16            Gemini / Mock      │
+                        │  (users, stories,       provider           │
+                        │   pages, jobs)              │              │
+                        │      ▲                      ▼              │
+                        │  Redis 7 (queue,        media volume       │
+                        │  rate limits)           (/media images)    │
+                        └────────────────────────────────────────────┘
 ```
 
-## Setup
+- **API** (`backend/app`) — FastAPI. Auth (JWT + bcrypt), story CRUD, share links, job progress polling, health checks. Serves the SPA and generated images.
+- **Worker** — ARQ (Redis queue). Runs the generation pipeline: one structured-JSON Gemini call produces title + paragraphs + per-paragraph illustration prompts, then illustrations generate **in parallel** with per-image progress updates.
+- **Providers** — `GENERATION_PROVIDER=auto` uses Gemini when `GOOGLE_API_KEY` is set, otherwise a **mock provider** that produces deterministic stories and locally-rendered illustrations, so the entire system is testable with no API key and zero cost.
+- **Quotas** — daily story limit per user (DB-counted, plan-aware) + Redis burst rate limiting.
+- **Storage** — images on a local volume by default; S3-compatible (R2/S3/GCS) via env vars.
 
-### Prerequisites
+## Quickstart (Docker — recommended)
 
-- **Python 3.8+**: For running the Flask backend.
-- **Node.js**: Optional, for local development with tools like `http-server`.
-- **Web Browser**: Chrome, Firefox, or Safari recommended.
-- **Internet Connection**: For CDN dependencies (Tailwind, Font Awesome, etc.) and AI API calls.
+```bash
+cp .env.example .env       # defaults are fine for a local trial (mock mode)
+docker compose up --build
+```
 
-### Installation
+Open http://localhost:8000 — sign up, create a story, watch the progress bar, download the PDF. Without a `GOOGLE_API_KEY` the app runs in **mock mode** end to end.
 
-1. **Clone the Repository**:
-   ```bash
-   git clone <repository-url>
-   cd kathasajha
-   ```
+To use real AI generation, put your key in `.env`:
 
-2. **Set Up a Virtual Environment**:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+```
+GOOGLE_API_KEY=your-key-here
+```
 
-3. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-   Example `requirements.txt`:
-   ```
-   flask==2.3.3
-   python-dotenv==1.0.0
-   requests==2.31.0  # For AI API calls, adjust based on app.py
-   ```
+and restart (`docker compose up -d`). The health endpoint reports the active provider: http://localhost:8000/api/health
 
-4. **Create `.env`**:
-   - Create a `.env` file in the project root.
-   - Add API keys for AI services  **Required** AI services (e.g., OpenAI, DALL·E, or equivalent).
-   Example `.env`:
-   ```
-   FLASK_ENV=development
-   OPENAI_API_KEY=your_openai_key
-   IMAGE_API_KEY=your_image_gen_key
-   ```
+## Morning test checklist
 
-5. **Run the Flask App**:
-   ```bash
-   flask run
-   ```
-   - Access the app at `http://localhost:5000`.
+The stack may already be running (start it otherwise: `docker compose up -d`). Then:
 
-6. **Frontend Dependencies** (loaded via CDN in `index.html`):
-   - Tailwind CSS: `https://cdn.tailwindcss.com`
-   - Font Awesome: `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css`
-   - Google Fonts: Merriweather and Playfair Display
-   - html2pdf.js: `https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js`
+1. Open http://localhost:8000 → sign up with any email/password.
+2. Create a story (try the Show Example button). Watch the progress bar: writing → illustrating N of M.
+3. The story opens automatically: illustrated pages, Save PDF, Share.
+4. Click Share → open the copied `/shared/...` link in a private/incognito window (no login needed).
+5. Create stories until the daily limit (3) blocks you with a friendly message; the header badge tracks remaining stories.
+6. Try a Nepali story: switch Language to नेपाली.
+7. `docker compose logs worker` shows each generation being processed.
 
-## Usage
+Everything above runs in **mock mode** (no API key, zero cost). When you add `GOOGLE_API_KEY` to `.env` and run `docker compose up -d`, the same flow uses real Gemini stories and illustrations — check http://localhost:8000/api/health shows `"provider": "gemini"`.
 
-1. **Open the App**:
-   - Navigate to `http://localhost:5000` in your browser.
+## Local development (no Docker)
 
-2. **Enter a Prompt**:
-   - In the "Your Story Idea" textarea, enter a story idea (e.g., "Leo the Lion and Lily the Lost Girl").
-   - Click "Show Example" to load a sample prompt.
+```bash
+cd backend
+python -m venv .venv
+.venv/Scripts/activate          # Windows; on mac/linux: source .venv/bin/activate
+pip install -r requirements-dev.txt
+uvicorn app.main:app --reload --port 8000
+```
 
-3. **Generate Story**:
-   - Click "Generate Story" to send the prompt to the `/generate` endpoint.
-   - A loading spinner appears while the story and images are generated.
+With no configuration this uses SQLite, inline background jobs (no Redis needed), and the mock provider. Open http://localhost:8000.
 
-4. **View and Download**:
-   - The generated story appears with each paragraph paired with an image.
-   - Click "Save Story" to download a PDF.
+### Tests
 
-## Technical Details
+```bash
+cd backend
+.venv/Scripts/python -m pytest
+```
 
-### Backend (`app.py`)
+Covers: auth, the full generation flow (job progress → pages → served images), user isolation, quotas, share links, validation, Nepali stories.
 
-- **Flask App**:
-  - Handles the `/generate` POST endpoint, accepting `{ prompt: "story idea" }`.
-  - Uses AI services to generate story text and images.
-  - Returns JSON:
-    ```json
-    {
-      "title": "Story Title",
-      "story": "Paragraph 1\n\nParagraph 2\n\n...",
-      "images": ["base64_image_1", "base64_image_2", ...]
-    }
-    ```
-- **Assumption**: Integrates with AI APIs (e.g., OpenAI for text, DALL·E for images).
+## API overview
 
-### Frontend (`templates/index.html`)
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/auth/register` | Create account → JWT |
+| POST | `/api/auth/login` | Log in → JWT |
+| GET | `/api/auth/me` | Current user |
+| GET | `/api/auth/usage` | Stories used/remaining today |
+| POST | `/api/stories` | Start story generation (202 → `story_id`, `job_id`) |
+| GET | `/api/jobs/{id}` | Poll progress (stage, current/total) |
+| GET | `/api/stories` | My story library |
+| GET | `/api/stories/{id}` | Full story with pages |
+| POST | `/api/stories/{id}/share` | Create public share link |
+| GET | `/api/stories/shared/{slug}` | Public shared story (no auth) |
+| DELETE | `/api/stories/{id}` | Delete story |
+| GET | `/api/health` | Liveness/readiness |
 
-- **HTML Structure**:
-  - Header with branding.
-  - Main section with story generator form and story display.
-  - Footer with social media links and copyright.
-- **JavaScript**:
-  - Handles form submission, API calls, and story rendering.
-  - Uses `fetch` to call `/generate`.
-  - Renders paragraphs with images, using a default image for missing/invalid images.
-  - Generates PDFs with `html2pdf.js` (letter-sized, portrait).
-- **Image Handling**:
-  - Each paragraph has an image from the `images` array.
-  - Uses a default base64 image if an image is missing or invalid (e.g., `BLOCKED:` or `ERROR:`).
-- **Styling**:
-  - Tailwind CSS with custom colors (`parchment`, `sepia`, `oldgold`), fonts, and shadows.
-  - Custom CSS in `static/css/styles.css` for spinner, image-text layout, and print styles.
+Interactive docs: http://localhost:8000/api/docs
 
-### CSS (`static/css/styles.css`)
+## Configuration
 
-- Defines styles for:
-  - Loading spinner animation.
-  - Story paragraph sections (image above text, centered).
-  - Image containers (max-width 350px, shadows).
-  - Print media rules to prevent page breaks within image-text pairs.
+All via environment variables (see `.env.example`). Key ones:
 
-### Known Issues and Fixes
+| Variable | Default | Notes |
+|---|---|---|
+| `SECRET_KEY` | dev value | **Must** be set in production (JWT signing) |
+| `GOOGLE_API_KEY` | empty | Empty → mock provider |
+| `GENERATION_PROVIDER` | `auto` | `auto` / `gemini` / `mock` |
+| `DATABASE_URL` | SQLite | Compose sets Postgres automatically |
+| `JOB_BACKEND` | `inline` | Compose sets `arq` (Redis worker) |
+| `FREE_DAILY_STORIES` | 3 | Free-plan daily quota |
+| `STORAGE_BACKEND` | `local` | `s3` + `S3_*` vars for R2/S3 |
 
-- **Issue**: Some PDF paragraphs had "No image available" placeholders.
-  - **Fix**: Updated `index.html` to use a default base64 image for missing/invalid images, ensuring every paragraph has an image.
-- **Recommendation**: Update `app.py` to generate images for all paragraphs to avoid relying on the default image.
+## Scaling notes
 
-### Default Image
+- **More generation throughput**: `docker compose up --scale worker=3`. Workers are stateless; each processes up to 8 stories concurrently.
+- **More API throughput**: raise uvicorn `--workers` in the Dockerfile CMD, or scale `api` behind a load balancer. The API is stateless (JWT), so horizontal scaling is safe.
+- **Media at scale**: switch `STORAGE_BACKEND=s3` (Cloudflare R2 recommended) so images ship to object storage + CDN instead of the local volume.
+- **Schema changes**: tables are auto-created on startup; introduce Alembic once the schema starts evolving in production.
 
-- Current default: 1x1 grey pixel for demonstration:
-  ```javascript
-  const defaultImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAC9gF0Y3X9NgAAAABJRU5ErkJggg==';
-  ```
-- **Action**: Replace with a base64-encoded jungle-themed image. Use an online tool or Python script to convert an image to base64.
+## Project structure
 
-## Development Notes
-
-- **Server-Side**:
-  - Ensure `app.py` generates images for all paragraphs.
-  - Handle AI API errors (e.g., rate limits, content violations) with retries or fallback images.
-- **Testing**:
-  - Test with prompts like "Leo the Lion and Lily the Lost Girl".
-  - Verify PDF output for consistent images and page breaks.
-- **Improvements**:
-  - Add a "Regenerate Images" button.
-  - Show progress in the loading indicator (e.g., "Generating image 3 of 5").
-  - Validate prompt length/content client-side.
-
-## Contributing
-
-1. Fork the repository.
-2. Create a feature branch (`git checkout -b feature/your-feature`).
-3. Commit changes (`git commit -m "Add your feature"`).
-4. Push to the branch (`git push origin feature/your-feature`).
-5. Open a pull request.
-
-## License
-
-© 2025 KathaSajha. All rights reserved.
-
-## Contact
-
-For questions or feedback, create an issue in the repository.
+```
+├── backend/
+│   ├── app/
+│   │   ├── main.py            # FastAPI app, static/SPA mounts
+│   │   ├── config.py          # env-driven settings
+│   │   ├── models.py          # User, Story, StoryPage, GenerationJob
+│   │   ├── routers/           # auth, stories, jobs, health
+│   │   ├── services/          # gemini + mock providers, pipeline
+│   │   ├── worker.py          # ARQ worker entrypoint
+│   │   ├── jobs.py            # queue dispatch (arq | inline)
+│   │   ├── quota.py           # daily quotas + burst rate limits
+│   │   └── storage.py         # local / S3 image storage
+│   └── tests/                 # pytest suite
+├── frontend/                  # vanilla-JS SPA (auth, progress, library, share, PDF)
+├── Dockerfile                 # shared api/worker image
+└── docker-compose.yml         # api + worker + postgres + redis
+```

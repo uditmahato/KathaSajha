@@ -1,0 +1,33 @@
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+exclude = ["migrations/versions", ".venv"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # import sorting
+    "UP",   # pyupgrade
+    "B",    # bugbear (real bug patterns)
+    "ASYNC",# async correctness
+    "S",    # security (bandit)
+    "C4",   # comprehensions
+]
+ignore = [
+    "S101",  # asserts are how tests assert
+    "B008",  # FastAPI Depends() in defaults is the framework's idiom
+    "E501",  # line length is handled by the formatter
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Test fixtures use literal passwords on purpose; the timeout kwarg is a helper's own.
+"tests/*" = ["S105", "S106", "S107", "ASYNC109"]
+# Field NAMES that merely contain "secret"/"token"; the values are not credentials.
+"app/config.py" = ["S105"]
+"app/schemas.py" = ["S105"]
+# Story illustrations pick palettes and layout, nothing security-relevant.
+"app/services/mock.py" = ["S311"]
+
+[tool.ruff.format]
+quote-style = "double"

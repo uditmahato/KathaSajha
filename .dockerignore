@@ -1,0 +1,14 @@
+.git
+.gitignore
+__pycache__
+**/__pycache__
+**/*.pyc
+backend/.venv
+backend/tests
+backend/data
+data
+.env
+*.md
+templates
+static
+app.py
