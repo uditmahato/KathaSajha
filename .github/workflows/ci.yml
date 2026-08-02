@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - name: Install dependencies
+        run: pip install -r backend/requirements-dev.txt
+      - name: Lint
+        working-directory: backend
+        run: ruff check app tests
+      - name: Format check
+        working-directory: backend
+        run: ruff format --check app tests
+      - name: Migrations match the models
+        working-directory: backend
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./ci-drift.db
+        # Fails if someone edits models.py without generating a migration.
+        run: |
+          alembic upgrade head
+          alembic check
+      - name: Run tests
+        working-directory: backend
+        run: pytest -q
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t kathasajha:ci .
+      - name: Smoke test image
+        run: |
+          docker run -d --name smoke -p 8000:8000 \
+            -e JOB_BACKEND=inline -e GENERATION_PROVIDER=mock \
+            -e DATABASE_URL=sqlite+aiosqlite:////tmp/smoke.db -e MEDIA_ROOT=/tmp/media \
+            kathasajha:ci
+          for i in $(seq 1 20); do
+            if curl -fsS http://localhost:8000/api/health; then exit 0; fi
+            sleep 1
+          done
+          docker logs smoke
+          exit 1

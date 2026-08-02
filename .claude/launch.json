@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "kathasajha-local",
+      "runtimeExecutable": "backend/.venv/Scripts/python.exe",
+      "runtimeArgs": [
+        "-c",
+        "import os, sys; os.chdir('backend'); sys.path.insert(0, '.'); os.environ.update({'ENVIRONMENT': 'development', 'SECRET_KEY': 'local-dev-only-secret-not-for-production-use', 'GENERATION_PROVIDER': 'mock', 'JOB_BACKEND': 'inline', 'BILLING_PROVIDER': 'none', 'DATABASE_URL': 'sqlite+aiosqlite:///./data/local.db', 'MEDIA_ROOT': './data/media', 'RATE_LIMIT_ENABLED': 'false', 'LOG_FORMAT': 'text', 'LOG_LEVEL': 'INFO'}); import uvicorn; uvicorn.run('app.main:app', host='127.0.0.1', port=8000, log_level='info')"
+      ],
+      "port": 8000
+    }
+  ]
+}

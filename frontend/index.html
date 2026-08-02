@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KathaSajha - AI Story Generator</title>
+    <!-- Site-level social preview. The /shared/{slug} route replaces everything
+         between these markers with the shared story's own title and cover, so a
+         forwarded link previews as that child's story rather than a bare URL. -->
+    <!--SOCIAL_META_START-->
+    <meta name="description" content="Turn one idea into an illustrated children's story, in English or Nepali, starring your child as the hero.">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="KathaSajha">
+    <meta property="og:title" content="KathaSajha - illustrated children's stories in English and Nepali">
+    <meta property="og:description" content="Turn one idea into an illustrated children's story, in English or Nepali, starring your child as the hero.">
+    <meta name="twitter:card" content="summary_large_image">
+    <!--SOCIAL_META_END-->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <!-- html2pdf (~1MB) is loaded on demand by app.js when someone saves a PDF.
+         It used to block rendering of the landing and shared pages, which are the
+         two pages whose bounce rate decides whether anyone signs up. -->
+    <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+    <a href="#app" class="skip-link">Skip to main content</a>
+    <header class="site-header">
+        <div class="header-inner">
+            <a class="brand" href="/" data-nav="home">
+                <h1>KathaSajha <span class="brand-nepali">कथा साझा</span></h1>
+                <p class="tagline">Create magical stories with AI</p>
+            </a>
+            <nav id="userNav" class="user-nav hidden">
+                <span id="usageBadge" class="usage-badge" title="Stories remaining today"></span>
+                <button id="navLibrary" class="btn btn-ghost">My Stories</button>
+                <button id="navLogout" class="btn btn-ghost">Log out</button>
+            </nav>
+            <nav id="guestNav" class="user-nav hidden">
+                <button id="navLogin" class="btn btn-ghost">Log in</button>
+                <button id="navSignup" class="btn btn-gold">Get started free</button>
+            </nav>
+        </div>
+    </header>
+
+    <main id="app" class="app-main">
+        <!-- Landing view (logged-out visitors) -->
+        <section id="landingView" class="view hidden">
+            <div class="hero">
+                <div class="hero-badge">✨ AI storyteller for kids aged 4-12</div>
+                <h2 class="hero-title">Magical, illustrated stories for your child, written in seconds</h2>
+                <p class="hero-sub">
+                    Type any story idea and KathaSajha writes a warm, age-appropriate tale with a
+                    colorful illustration on every page. In English or in <strong>नेपाली</strong>,
+                    starring your own child as the hero.
+                </p>
+                <div class="hero-ctas">
+                    <button id="heroSignup" class="btn btn-primary btn-lg">Create your first story for free</button>
+                    <a href="#howItWorks" class="btn btn-secondary btn-lg">See how it works</a>
+                </div>
+                <p class="hero-note">Free plan: 10 stories a month · No credit card needed</p>
+                <div class="hero-book">
+                    <div class="hero-page">
+                        <span class="hero-emoji">🦁</span>
+                        <p>"Leo the Lion and Lily the Lost Girl"</p>
+                    </div>
+                    <div class="hero-page">
+                        <span class="hero-emoji" aria-hidden="true">🏔️</span>
+                        <p lang="ne">"साहसी हिमाली केटी र चङ्गा"</p>
+                    </div>
+                    <div class="hero-page">
+                        <span class="hero-emoji">🐉</span>
+                        <p>"The Dragon Who Was Afraid of Rain"</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="howItWorks" class="landing-section">
+                <h2 class="section-heading">How it works</h2>
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <h3>Share an idea</h3>
+                        <p>A sentence is enough: "a yak who wants to see Kathmandu". Add your child's name to make them the hero.</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <h3>Watch it come alive</h3>
+                        <p>Our AI writes a 3-5 page story with a gentle lesson, and paints a colorful illustration for every page.</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <h3>Read, share, keep</h3>
+                        <p>Read together on any device, share a link with family, or download a print-ready PDF storybook.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="landing-section">
+                <h2 class="section-heading">Why families love KathaSajha</h2>
+                <div class="features">
+                    <div class="feature"><span class="feature-icon">🎨</span><h3>Illustrated pages</h3><p>Every page gets its own storybook illustration, matched to the scene.</p></div>
+                    <div class="feature"><span class="feature-icon">🇳🇵</span><h3>नेपाली + English</h3><p>Stories in Nepali or English, keeping your language alive for the next generation.</p></div>
+                    <div class="feature"><span class="feature-icon">🦸</span><h3>Your child, the hero</h3><p>Add a name and the story is about them: their courage, their adventure.</p></div>
+                    <div class="feature"><span class="feature-icon">📄</span><h3>PDF storybooks</h3><p>One click turns any story into a beautiful, letter-sized PDF with a cover page.</p></div>
+                    <div class="feature"><span class="feature-icon">🔗</span><h3>Share with family</h3><p>Send a private link: grandparents can read it anywhere, no account needed.</p></div>
+                    <div class="feature"><span class="feature-icon">🛡️</span><h3>Safe for kids</h3><p>Every story follows strict child-safety rules: kind, positive, age-appropriate.</p></div>
+                </div>
+            </div>
+
+            <div id="pricing" class="landing-section">
+                <h2 class="section-heading">Simple pricing</h2>
+                <div id="landingPlans" class="plans-grid"></div>
+                <p class="muted small pricing-note">
+                    Start free, no card needed. Plus is opening soon and early members get first access.
+                </p>
+            </div>
+
+            <div class="landing-section landing-cta-box">
+                <h2 class="section-heading">Tonight's bedtime story is one idea away</h2>
+                <p class="muted">Join free and create 10 stories a month. Upgrade anytime as your library grows.</p>
+                <button id="footerSignup" class="btn btn-primary btn-lg">Start creating for free</button>
+            </div>
+        </section>
+
+        <!-- Auth view -->
+        <section id="authView" class="view hidden">
+            <div class="card auth-card">
+                <div class="tabs">
+                    <button id="tabLogin" class="tab active">Log in</button>
+                    <button id="tabRegister" class="tab">Sign up</button>
+                </div>
+                <form id="authForm">
+                    <div id="nameField" class="field hidden">
+                        <label for="authName">Your name</label>
+                        <input type="text" id="authName" maxlength="100" placeholder="Udit" autocomplete="name">
+                    </div>
+                    <div class="field">
+                        <label for="authEmail">Email</label>
+                        <input type="email" id="authEmail" required placeholder="you@example.com" autocomplete="email">
+                    </div>
+                    <div class="field">
+                        <label for="authPassword">Password</label>
+                        <input type="password" id="authPassword" required minlength="8" placeholder="At least 8 characters" autocomplete="current-password">
+                    </div>
+                    <p id="authError" class="error-text hidden" role="alert"></p>
+                    <button type="submit" id="authSubmit" class="btn btn-primary btn-block">Log in</button>
+                </form>
+                <p class="auth-alt">
+                    <button type="button" id="forgotLink" class="link-btn">Forgot your password?</button>
+                </p>
+            </div>
+        </section>
+
+        <!-- Forgot password -->
+        <section id="forgotView" class="view hidden">
+            <div class="card auth-card">
+                <h2>Reset your password</h2>
+                <p class="muted">Enter the email you signed up with and we will send you a link to choose a new password.</p>
+                <form id="forgotForm">
+                    <div class="field">
+                        <label for="forgotEmail">Email</label>
+                        <input type="email" id="forgotEmail" required placeholder="you@example.com" autocomplete="email">
+                    </div>
+                    <p id="forgotMessage" class="notice hidden" role="status"></p>
+                    <p id="forgotError" class="error-text hidden" role="alert"></p>
+                    <button type="submit" id="forgotSubmit" class="btn btn-primary btn-block">Send reset link</button>
+                </form>
+                <p class="auth-alt"><button type="button" id="backToLogin" class="link-btn">Back to log in</button></p>
+            </div>
+        </section>
+
+        <!-- Choose a new password (from the emailed link) -->
+        <section id="resetView" class="view hidden">
+            <div class="card auth-card">
+                <h2>Choose a new password</h2>
+                <form id="resetForm">
+                    <div class="field">
+                        <label for="resetPassword">New password</label>
+                        <input type="password" id="resetPassword" required minlength="8" placeholder="At least 8 characters" autocomplete="new-password">
+                    </div>
+                    <p id="resetError" class="error-text hidden" role="alert"></p>
+                    <button type="submit" id="resetSubmit" class="btn btn-primary btn-block">Save new password</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Create view -->
+        <section id="createView" class="view hidden">
+            <div class="card">
+                <h2>Create Your Story</h2>
+                <p class="muted">Enter a story idea below. Our AI will craft a wonderful, illustrated tale.</p>
+                <div class="field">
+                    <label for="storyPrompt">Your story idea</label>
+                    <textarea id="storyPrompt" rows="3" maxlength="500" placeholder="Example: Leo the Lion and Lily the Lost Girl"></textarea>
+                    <span id="promptCount" class="char-count">0 / 500</span>
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="heroName">Hero's name <span class="muted">(optional)</span></label>
+                        <input type="text" id="heroName" maxlength="60" placeholder="Your child's name">
+                    </div>
+                    <div class="field">
+                        <label for="storyLanguage">Language</label>
+                        <select id="storyLanguage">
+                            <option value="en">English</option>
+                            <option value="ne">नेपाली (Nepali)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="button-row">
+                    <button id="generateBtn" class="btn btn-primary">✨ Generate Story</button>
+                    <button id="sampleBtn" class="btn btn-secondary">💡 Show Example</button>
+                </div>
+                <p id="createError" class="error-text hidden"></p>
+
+                <div id="progressPanel" class="progress-panel hidden" role="status" aria-live="polite">
+                    <div class="loading-spinner" aria-hidden="true"></div>
+                    <p id="progressStage" class="progress-stage">Queued...</p>
+                    <div class="progress-track" role="progressbar" aria-labelledby="progressStage"
+                         id="progressTrack" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                        <div id="progressBar" class="progress-bar"></div>
+                    </div>
+                    <p id="progressDetail" class="muted small"></p>
+                </div>
+            </div>
+
+            <div id="librarySection" class="library-section">
+                <h2 class="section-title">My Stories</h2>
+                <div id="libraryGrid" class="library-grid"></div>
+                <p id="libraryEmpty" class="muted hidden">No stories yet. Create your first one above!</p>
+            </div>
+        </section>
+
+        <!-- Story reader view (own + shared) -->
+        <section id="storyView" class="view hidden">
+            <div class="reader-toolbar">
+                <button id="backBtn" class="btn btn-ghost">← Back</button>
+                <div class="reader-actions">
+                    <button id="shareBtn" class="btn btn-secondary hidden">🔗 Share</button>
+                    <button id="pdfBtn" class="btn btn-secondary">📄 Save PDF</button>
+                    <button id="deleteBtn" class="btn btn-danger hidden">🗑 Delete</button>
+                </div>
+            </div>
+            <p id="shareInfo" class="share-info hidden"></p>
+            <div class="card story-card-reader" id="storyToDownload">
+                <h2 id="storyTitle" class="story-title"></h2>
+                <div id="storyContent"></div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <p>KathaSajha · AI-powered story generator · © 2025 KathaSajha</p>
+    </footer>
+
+    <!-- Toasts: non-blocking feedback, announced to screen readers -->
+    <div id="toastHost" class="toast-host" role="status" aria-live="polite" aria-atomic="false"></div>
+
+    <!-- Upgrade moment: shown when a parent hits the daily wall -->
+    <div id="upgradeBackdrop" class="modal-backdrop hidden">
+        <div class="modal upgrade-modal" role="dialog" aria-modal="true" aria-labelledby="upgradeTitle" aria-describedby="upgradeBody">
+            <h2 id="upgradeTitle" class="modal-title">That's today's stories finished</h2>
+            <p id="upgradeBody" class="modal-body"></p>
+            <div id="upgradePlan" class="upgrade-plan"></div>
+            <p id="upgradeResult" class="notice hidden" role="status"></p>
+            <div class="modal-actions">
+                <button id="upgradeDismiss" class="btn btn-secondary">Maybe tomorrow</button>
+                <button id="upgradeInterest" class="btn btn-primary">Tell me when Plus opens</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation dialog: replaces window.confirm -->
+    <div id="confirmBackdrop" class="modal-backdrop hidden">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmBody">
+            <h2 id="confirmTitle" class="modal-title">Are you sure?</h2>
+            <p id="confirmBody" class="modal-body"></p>
+            <div class="modal-actions">
+                <button id="confirmCancel" class="btn btn-secondary">Cancel</button>
+                <button id="confirmOk" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/assets/app.js"></script>
+</body>
+</html>

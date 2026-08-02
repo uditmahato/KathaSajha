@@ -1,3 +1,12 @@
 /env
 .env
 env
+__pycache__/
+*.pyc
+.venv/
+venv/
+/data/
+backend/data/
+.pytest_cache/
+.ruff_cache/
+.coverage

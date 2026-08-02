@@ -1,0 +1,118 @@
+name: kathasajha
+
+x-app-env: &app-env
+  ENVIRONMENT: ${ENVIRONMENT:-development}
+  SECRET_KEY: ${SECRET_KEY:-dev-only-secret-change-me}
+  DATABASE_URL: postgresql+asyncpg://katha:${POSTGRES_PASSWORD:-katha}@db:5432/kathasajha
+  REDIS_URL: redis://redis:6379/0
+  JOB_BACKEND: arq
+  GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+  GENERATION_PROVIDER: ${GENERATION_PROVIDER:-auto}
+  STORAGE_BACKEND: local
+  MEDIA_ROOT: /data/media
+  FREE_DAILY_STORIES: ${FREE_DAILY_STORIES:-3}
+  FREE_MONTHLY_STORIES: ${FREE_MONTHLY_STORIES:-10}
+  # Billing stays dormant while these are empty. They must be listed here or
+  # filling them into .env would change nothing inside the containers, and the
+  # "going live is configuration-only" promise would be false.
+  STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+  STRIPE_PRICE_IDS: ${STRIPE_PRICE_IDS:-}
+  PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+  TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
+  RATE_LIMIT_ENABLED: "true"
+  LOG_FORMAT: ${LOG_FORMAT:-json}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: katha
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-katha}
+      POSTGRES_DB: kathasajha
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      # -h 127.0.0.1 forces TCP: the image's temporary initdb server is socket-only,
+      # so this can't false-positive during first boot.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U katha -d kathasajha"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # Without this, a stopped database never returns and the api crash-loops forever.
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # One-shot schema migration. api and worker wait for this to exit successfully,
+  # so no service can ever start against an out-of-date schema or race another.
+  migrate:
+    build: .
+    command: ["alembic", "upgrade", "head"]
+    environment: *app-env
+    volumes:
+      - ./backend/app:/app/app:ro
+      - ./backend/migrations:/app/migrations:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build: .
+    environment: *app-env
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - media_data:/data/media
+      # Live-mounted so edits apply without rebuilding the image.
+      # Frontend: refresh the browser. Backend: `docker compose restart api worker`.
+      # The image still contains a full copy, so production does not depend on these.
+      - ./frontend:/frontend:ro
+      - ./backend/app:/app/app:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: ["arq", "app.worker.WorkerSettings"]
+    environment: *app-env
+    volumes:
+      - media_data:/data/media
+      - ./backend/app:/app/app:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  redis_data:
+  media_data:
