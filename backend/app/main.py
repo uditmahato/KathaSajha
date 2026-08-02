@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from .billing_guard import validate_billing_settings
 from .config import get_settings
 from .db import dispose_engine, init_db
 from .deps import DbSession
@@ -44,6 +45,11 @@ async def lifespan(app: FastAPI):
         settings.secret_key in _KNOWN_DEV_SECRETS or len(settings.secret_key) < 32
     ):
         raise RuntimeError("SECRET_KEY must be set to a long random value in production")
+    # Refuses to boot on half-configured billing, in every environment: a
+    # partially-wired dev box creates real test-mode sessions and has the same
+    # shape of bug, and enforcing uniformly means the dev config proves the
+    # production one.
+    validate_billing_settings(settings)
     if settings.job_backend == "inline":
         # A previous process may have died with generations in flight; fail those
         # orphans now so users aren't left with permanently-stuck stories.
@@ -149,19 +155,29 @@ class BodySizeLimitMiddleware:
 
     _BODY_METHODS = ("POST", "PUT", "PATCH")
 
-    def __init__(self, app, max_bytes: int):
+    def __init__(self, app, max_bytes: int, exempt_paths: dict[str, int] | None = None):
         self.app = app
         self.max_bytes = max_bytes
+        # Paths with their own ceiling. The Stripe webhook needs one: events are
+        # usually a few KB but can exceed the global cap, and a 413 makes Stripe
+        # retry for three days and then disable the endpoint. Truncating its
+        # body would be worse still -- signature verification is over the exact
+        # bytes, so a trimmed payload silently fails to verify.
+        self.exempt_paths = exempt_paths or {}
+
+    def _limit_for(self, path: str) -> int:
+        return self.exempt_paths.get(path, self.max_bytes)
 
     async def __call__(self, scope, receive, send):
         if scope.get("type") != "http" or scope.get("method") not in self._BODY_METHODS:
             await self.app(scope, receive, send)
             return
 
+        max_bytes = self._limit_for(scope.get("path", ""))
         declared = dict(scope.get("headers") or []).get(b"content-length")
         if declared is not None:
             try:
-                too_big = int(declared) > self.max_bytes
+                too_big = int(declared) > max_bytes
             except ValueError:
                 too_big = True
             if too_big:
@@ -184,7 +200,7 @@ class BodySizeLimitMiddleware:
             message = await receive()
             if message.get("type") == "http.request":
                 seen += len(message.get("body", b""))
-                if seen > self.max_bytes:
+                if seen > max_bytes:
                     too_large = True
                     return end_of_stream
             return message
@@ -232,7 +248,11 @@ def create_app() -> FastAPI:
     app.add_middleware(CorrelationMiddleware)
     # Added last, so it wraps everything else: an oversized body is refused
     # before any other layer gets the chance to buffer it.
-    app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_request_body_bytes)
+    app.add_middleware(
+        BodySizeLimitMiddleware,
+        max_bytes=settings.max_request_body_bytes,
+        exempt_paths={"/api/billing/webhook": settings.webhook_max_body_bytes},
+    )
 
     media_prefix = settings.media_url_prefix.rstrip("/") + "/"
 
@@ -285,6 +305,14 @@ def create_app() -> FastAPI:
     app.include_router(stories.router)
     app.include_router(jobs.router)
     app.include_router(plans.router)
+    if settings.billing_enabled:
+        # Mounted only when billing is fully configured. While dormant these
+        # paths do not exist at all -- a stub webhook that answers 200 without a
+        # verified signature is an unauthenticated free-upgrade endpoint.
+        from .routers import billing
+
+        app.include_router(billing.router)
+        logger.info("Billing enabled (provider=%s)", settings.resolved_billing_provider)
 
     # Locally-stored generated images.
     if settings.storage_backend == "local":
@@ -333,6 +361,13 @@ def create_app() -> FastAPI:
 
         @app.get("/reset-password", include_in_schema=False)
         async def spa_reset_password():
+            return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+
+        @app.get("/billing/return", include_in_schema=False)
+        async def spa_billing_return():
+            # Registered even while billing is dormant: Stripe return URLs are
+            # configured once, and a 404 on the way back from a real payment is
+            # the worst possible moment to discover a missing route.
             return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
         @app.get("/story/{story_id}", include_in_schema=False)

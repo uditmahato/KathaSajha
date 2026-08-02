@@ -14,7 +14,8 @@ from sqlalchemy import select
 
 from ..deps import CurrentUser, DbSession
 from ..models import PlanInterest, User
-from ..plans import PLANS, daily_stories_for, get_plan
+from ..plans import PLANS, daily_stories_for, get_plan, is_purchasable, monthly_stories_for
+from ..quota import effective_plan_for
 from ..schemas import MessageResponse, PlanInterestRequest, PlanOut
 from ..security import decode_access_token
 
@@ -45,17 +46,21 @@ async def _optional_user(
 
 @router.get("", response_model=list[PlanOut])
 async def list_plans(user: Annotated[User | None, Depends(_optional_user)]):
-    current = user.plan if user else None
+    # Effective, not stored: a lapsed subscriber must not still see "Your plan".
+    current = effective_plan_for(user) if user else None
     return [
         PlanOut(
             code=p.code,
             name=p.name,
             tagline=p.tagline,
             daily_stories=daily_stories_for(p.code),
+            monthly_stories=monthly_stories_for(p.code),
             monthly_price_usd=p.monthly_price_usd,
             monthly_price_npr=p.monthly_price_npr,
             features=p.features,
-            purchasable=p.purchasable,
+            # Derived, never the stored flag: a paid tier is only buyable once
+            # billing is configured AND that plan has a price id.
+            purchasable=is_purchasable(p.code),
             highlight=p.highlight,
             is_current=(p.code == current),
         )

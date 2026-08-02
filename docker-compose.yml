@@ -11,6 +11,15 @@ x-app-env: &app-env
   STORAGE_BACKEND: local
   MEDIA_ROOT: /data/media
   FREE_DAILY_STORIES: ${FREE_DAILY_STORIES:-3}
+  FREE_MONTHLY_STORIES: ${FREE_MONTHLY_STORIES:-10}
+  # Billing stays dormant while these are empty. They must be listed here or
+  # filling them into .env would change nothing inside the containers, and the
+  # "going live is configuration-only" promise would be false.
+  STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+  STRIPE_PRICE_IDS: ${STRIPE_PRICE_IDS:-}
+  PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+  TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
   RATE_LIMIT_ENABLED: "true"
   LOG_FORMAT: ${LOG_FORMAT:-json}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}

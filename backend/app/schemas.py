@@ -99,12 +99,35 @@ class PlanOut(BaseModel):
     name: str
     tagline: str
     daily_stories: int
+    monthly_stories: int = 0
     monthly_price_usd: float
     monthly_price_npr: int
     features: list[str]
     purchasable: bool
     highlight: bool
     is_current: bool = False
+
+
+class CheckoutRequest(BaseModel):
+    plan_code: str = Field(pattern="^[a-z]{2,20}$")
+    source: str = Field(default="", max_length=40)
+
+
+class CheckoutSessionOut(BaseModel):
+    checkout_url: str
+    session_id: str
+
+
+class PortalSessionOut(BaseModel):
+    portal_url: str
+
+
+class SubscriptionStateOut(BaseModel):
+    plan: str
+    plan_status: str = ""
+    plan_renews_at: datetime | None = None
+    # False means the state was already applied, e.g. the webhook won the race.
+    changed: bool = False
 
 
 class PlanInterestRequest(BaseModel):

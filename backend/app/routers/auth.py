@@ -11,6 +11,7 @@ from ..deps import CurrentUser, DbSession
 from ..models import PasswordResetToken, User
 from ..quota import (
     daily_limit_for,
+    effective_plan_for,
     enforce_auth_attempt_limit,
     monthly_limit_for,
     stories_created_this_month,
@@ -202,5 +203,5 @@ async def usage(user: CurrentUser, db: DbSession):
         stories_this_month=used_month,
         monthly_limit=limit_month,
         remaining_this_month=max(0, limit_month - used_month),
-        plan=user.plan,
+        plan=effective_plan_for(user),
     )

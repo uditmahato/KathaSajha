@@ -86,6 +86,24 @@ class Settings(BaseSettings):
     # Set to 0 to disable (not advisable once a real API key is configured).
     global_daily_generation_limit: int = 500
 
+    # --- Billing (dormant until credentials are supplied) ---
+    # "auto" turns billing on only when every required Stripe value is present.
+    # It never resolves to "mock": accidentally shipping a fake billing provider
+    # that hands out paid plans is a worse failure than billing being off.
+    billing_provider: Literal["auto", "stripe", "mock", "none"] = "auto"
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    # plan code -> Stripe price id, e.g. "plus=price_123". Same parsing style as
+    # cors_origins and trusted_proxy_ips.
+    stripe_price_ids: str = ""
+    stripe_api_version: str = "2024-06-20"
+    # Stripe events are usually a few KB but can exceed the global body ceiling.
+    # A 413 makes Stripe retry for three days and then disable the endpoint.
+    webhook_max_body_bytes: int = 256 * 1024
+    # Days of access kept after a payment fails, so a card that expires at
+    # bedtime does not take the story away that night.
+    subscription_grace_days: int = 3
+
     # --- CORS (empty = same-origin only, no CORS needed) ---
     cors_origins: str = ""
 
@@ -118,6 +136,35 @@ class Settings(BaseSettings):
     @property
     def trusted_proxy_list(self) -> list[str]:
         return [p.strip() for p in self.trusted_proxy_ips.split(",") if p.strip()]
+
+    @property
+    def stripe_price_id_map(self) -> dict[str, str]:
+        out: dict[str, str] = {}
+        for pair in self.stripe_price_ids.split(","):
+            code, _, price_id = pair.partition("=")
+            if code.strip() and price_id.strip():
+                out[code.strip()] = price_id.strip()
+        return out
+
+    @property
+    def resolved_billing_provider(self) -> str:
+        """Billing is on only when EVERY required value is present.
+
+        Partial configuration resolving to "on" is the dangerous direction: a
+        secret key without a webhook secret takes a parent's money and never
+        upgrades them, and nothing in our logs looks wrong.
+        """
+        if self.billing_provider == "auto":
+            ready = self.stripe_secret_key and self.stripe_webhook_secret and self.stripe_price_id_map
+            return "stripe" if ready else "none"
+        return self.billing_provider
+
+    @property
+    def billing_enabled(self) -> bool:
+        return self.resolved_billing_provider != "none"
+
+    def price_id_for(self, plan_code: str) -> str:
+        return self.stripe_price_id_map.get(plan_code, "")
 
     @property
     def cost_rates_configured(self) -> bool:

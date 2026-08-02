@@ -251,6 +251,12 @@
             if (p.is_current) {
                 cta.textContent = 'Current plan';
                 cta.disabled = true;
+            } else if (p.purchasable && p.monthly_price_usd > 0) {
+                // Only reachable once billing is configured server-side: the API
+                // derives `purchasable` from that, so this branch stays dark
+                // until Stripe credentials exist.
+                cta.textContent = 'Upgrade to ' + p.name;
+                cta.addEventListener('click', () => startCheckout(p, cta, 'pricing_page'));
             } else if (p.purchasable) {
                 cta.textContent = 'Start free';
                 cta.addEventListener('click', () => (token() ? show(els.createView) : goToAuth('register')));
@@ -274,6 +280,49 @@
             card.appendChild(cta);
             container.appendChild(card);
         });
+    }
+
+    /** Send the browser to hosted checkout. A top-level navigation, not a form
+     *  post, so the page's CSP needs no Stripe origins at all. */
+    async function startCheckout(plan, button, source) {
+        if (!token()) return goToAuth('register');
+        const label = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Opening checkout...';
+        try {
+            const r = await api('/api/billing/checkout', {
+                method: 'POST',
+                body: JSON.stringify({ plan_code: plan.code, source: source }),
+            });
+            window.location.assign(r.checkout_url);
+        } catch (err) {
+            toast(err.message, 'error');
+            button.disabled = false;
+            button.textContent = label;
+        }
+    }
+
+    /** Confirm on return from checkout rather than waiting for the webhook.
+     *  Webhooks are asynchronous and can be misconfigured entirely, so this is
+     *  what guarantees a paying customer is upgraded when they get back. */
+    async function confirmCheckoutReturn(params) {
+        const status = params.get('status');
+        const sessionId = params.get('session_id');
+        window.history.replaceState({}, '', '/');
+        if (status === 'cancelled') return toast('Checkout cancelled. Nothing was charged.');
+        if (status !== 'success' || !sessionId) return;
+        try {
+            const r = await api('/api/billing/checkout/' + encodeURIComponent(sessionId) + '/confirm', {
+                method: 'POST',
+            });
+            plansCache = null;  // purchasability and "Your plan" both just changed
+            await refreshUsage();
+            toast(r.plan_status === 'pending'
+                ? 'Payment received. Your plan will update in a moment.'
+                : 'Welcome to ' + r.plan + '. Enjoy the stories.', 'success');
+        } catch (_) {
+            toast('We could not confirm your payment yet. It may take a moment to appear.', 'error');
+        }
     }
 
     /** The daily wall is the highest-intent moment in the product. Answer it with
@@ -844,7 +893,14 @@
 
     const sharedMatch = window.location.pathname.match(/^\/shared\/([a-z0-9]+)$/i);
     const storyMatch = window.location.pathname.match(/^\/story\/([a-z0-9]+)$/i);
-    if (window.location.pathname === '/reset-password') {
+    if (window.location.pathname === '/billing/return') {
+        const params = new URLSearchParams(window.location.search);
+        if (token()) {
+            enterApp().then(() => confirmCheckoutReturn(params)).catch(() => show(els.landingView));
+        } else {
+            goToAuth('login');
+        }
+    } else if (window.location.pathname === '/reset-password') {
         show(els.resetView);
         els.resetPassword.focus();
     } else if (sharedMatch) {

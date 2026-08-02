@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import get_settings
 from .models import GenerationEvent, User
-from .plans import daily_stories_for, monthly_stories_for
+from .plans import daily_stories_for, effective_plan_code, monthly_stories_for
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +28,19 @@ async def _get_redis():
     return _redis
 
 
+def effective_plan_for(user: User) -> str:
+    """The single place entitlement is decided. Every limit and every piece of
+    plan-facing copy must go through here, or the UI will say "Plus" while the
+    quota enforces free."""
+    return effective_plan_code(user.plan, user.plan_expires_at)
+
+
 def daily_limit_for(user: User) -> int:
-    return daily_stories_for(user.plan)
+    return daily_stories_for(effective_plan_for(user))
 
 
 def monthly_limit_for(user: User) -> int:
-    return monthly_stories_for(user.plan)
+    return monthly_stories_for(effective_plan_for(user))
 
 
 def _utc_day_start() -> datetime:
@@ -82,7 +89,7 @@ async def enforce_daily_quota(db: AsyncSession, user: User) -> None:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=(
-                f"You've used all {limit} stories on your {user.plan} plan today. "
+                f"You've used all {limit} stories on your {effective_plan_for(user)} plan today. "
                 "Your allowance resets tomorrow."
             ),
             headers={"X-Quota-Exhausted": "daily"},
@@ -96,7 +103,7 @@ async def enforce_monthly_quota(db: AsyncSession, user: User) -> None:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=(
-                f"You've used all {limit} stories on your {user.plan} plan this month. "
+                f"You've used all {limit} stories on your {effective_plan_for(user)} plan this month. "
                 "Your allowance resets at the start of next month."
             ),
             # Same signal as the daily wall: the frontend answers it with an

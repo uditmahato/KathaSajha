@@ -34,6 +34,22 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     display_name: Mapped[str] = mapped_column(String(100), default="")
     plan: Mapped[str] = mapped_column(String(20), default="free")  # free | plus
+    # Which entitlement; plan_expires_at says whether it is still live. A paid
+    # plan with no expiry grants nothing, so a webhook that never arrives
+    # expires access instead of granting it forever.
+    plan_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # NULLable, not default="": NULLs are distinct under a unique index but
+    # empty strings are not, so a default of "" would collide on the second
+    # user who has no Stripe customer yet.
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, index=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(
+        String(64), unique=True, nullable=True, index=True
+    )
+    stripe_subscription_status: Mapped[str] = mapped_column(String(30), default="", server_default="")
+    # Provider timestamp of the newest billing event applied to this account.
+    # Webhooks can arrive out of order; an older snapshot must not roll a newer
+    # subscription state backwards.
+    last_billing_event_at: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     # Bumped on every password change or reset. Tokens carry the value they were
     # issued with, so bumping it invalidates every session at once. Without this
     # a stolen token outlives the reset that was meant to revoke it.
@@ -97,6 +113,28 @@ class GenerationEvent(Base):
         # Serves both the per-user daily count and the global daily ceiling.
         Index("ix_generation_events_user_created", "user_id", "created_at"),
     )
+
+
+class BillingEventRecord(Base):
+    """Every webhook we have already applied, keyed by the provider's own id.
+
+    Stripe delivers at-least-once and can deliver out of order. The primary key
+    is the provider's `evt_` id rather than our usual uuid, because that is
+    exactly the value that makes a redelivery detectable. `provider_created` is
+    the ordering watermark: an older event arriving after a newer one must not
+    roll a subscription backwards.
+    """
+
+    __tablename__ = "billing_events"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)  # provider event id
+    type: Mapped[str] = mapped_column(String(80))
+    provider_created: Mapped[int] = mapped_column(Integer, default=0)
+    # No foreign key: an event about a deleted account must still be recorded
+    # rather than failing the webhook and triggering three days of retries.
+    user_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(30), default="")  # applied | ignored | unmatched
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
 
 class PasswordResetToken(Base):

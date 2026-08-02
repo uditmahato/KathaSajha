@@ -12,5 +12,6 @@ bcrypt==4.3.0
 redis==5.2.1
 arq==0.26.3
 google-genai==1.16.1
+stripe==15.4.0
 Pillow==11.2.1
 python-dotenv==1.1.0

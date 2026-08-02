@@ -10,6 +10,7 @@ otherwise.
 """
 
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
 from .config import get_settings
 
@@ -20,6 +21,8 @@ class Plan:
     name: str
     tagline: str
     daily_stories: int | None  # None = use the configured free allowance
+    # `purchasable` below is INTENT ("we mean to sell this"), not capability.
+    # Ask is_purchasable(code) for whether it can actually be bought today.
     monthly_price_usd: float
     monthly_price_npr: int
     # The daily figure exists to stop bursts; this is the real allowance and the
@@ -62,7 +65,10 @@ PLANS: dict[str, Plan] = {
             "Print-ready PDF quality",
             "Early access to printed storybooks",
         ],
-        purchasable=False,  # no payment provider connected yet
+        # Intent to sell. Whether it is ACTUALLY buyable is derived by
+        # is_purchasable() from billing configuration, so this stays False to
+        # the API until Stripe credentials and a price id exist.
+        purchasable=True,
         highlight=True,
     ),
 }
@@ -71,6 +77,48 @@ PLANS: dict[str, Plan] = {
 def get_plan(code: str) -> Plan:
     """Unknown or stale plan codes fall back to free: never grant more by accident."""
     return PLANS.get(code, PLANS["free"])
+
+
+def effective_plan_code(code: str, expires_at: datetime | None, *, now: datetime | None = None) -> str:
+    """The plan a user is actually entitled to right now.
+
+    A paid plan grants nothing unless it carries an expiry in the future. That
+    is what makes a missed webhook safe: silence lets access lapse at the period
+    boundary rather than granting it forever.
+    """
+    plan = get_plan(code)
+    if plan.monthly_price_usd <= 0:
+        return plan.code
+    if expires_at is None:
+        return "free"
+    # SQLite hands back naive datetimes; comparing one to an aware `now` raises
+    # TypeError on the story-creation path. The same normalisation already
+    # exists in routers/auth.py for reset tokens.
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=UTC)
+    return plan.code if expires_at > (now or datetime.now(UTC)) else "free"
+
+
+def is_purchasable(code: str) -> bool:
+    """Free is always joinable. A paid tier is only buyable when billing is
+    actually wired up AND that specific plan has a price id, so a tier added
+    without one can never render a buy button that leads nowhere."""
+    plan = get_plan(code)
+    if plan.monthly_price_usd <= 0:
+        return plan.purchasable
+    settings = get_settings()
+    return bool(settings.billing_enabled and settings.price_id_for(plan.code))
+
+
+def plan_code_for_price_id(price_id: str) -> str | None:
+    """Reverse the configured price map. Fails closed: an unrecognised price
+    returns None, and callers must treat that as "grant nothing"."""
+    if not price_id:
+        return None
+    for code, configured in get_settings().stripe_price_id_map.items():
+        if configured == price_id and code in PLANS:
+            return code
+    return None
 
 
 def daily_stories_for(code: str) -> int:
