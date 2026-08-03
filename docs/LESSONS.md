@@ -65,6 +65,14 @@ Field constraints cannot bound a request: Starlette buffers and parses the whole
 **Rule**: size limits belong in front of the application, as ASGI middleware that checks `Content-Length`
 *and* counts streamed bytes. Field constraints are for correctness, not for protection.
 
+## A green suite says nothing about an artifact nobody opened
+The PDF exporter shipped a 15-page file for a 5-page story - ten sheets blank, the cover blank -
+through 110 passing tests, because every test checked the code and none opened the output. The
+defect was found by a person reading the exported file.
+**Rule**: when the deliverable is an artifact (PDF, image, export), at least one test parses the
+artifact itself and asserts on what a user would see; and a human looks at one real example
+before the feature is called done.
+
 ## Verify in the browser, not just in tests
 Several defects (blank views on a rejected promise, stale "session expired" errors after re-login) were
 invisible to API tests and obvious in the browser.

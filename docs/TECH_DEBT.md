@@ -15,7 +15,6 @@ Ranked by what would hurt most at launch. Updated every iteration. Items move to
 | Item | Impact | Status |
 |---|---|---|
 | No payment provider | A pricing page and demand capture exist, but nothing can actually be bought. Zero revenue path today | PARTIAL. Plans, entitlements, and `plan_interest` shipped in iteration 2; Stripe/eSewa/Khalti still missing |
-| Client-side PDF only | `html2pdf` rasterizes the DOM. Fine for screen, not acceptable for print-on-demand or crisp text | OPEN |
 | Frontend has no automated tests | 851 lines of `app.js` and every regression is caught only by manual browsing | OPEN |
 | No type checking or dependency scanning in CI | Ruff lint and format run, plus a migration drift check. Nothing catches type errors or vulnerable dependencies | PARTIAL |
 | Quota day boundary is UTC | A parent in Kathmandu (UTC+5:45) sees the daily limit reset mid-morning, which feels arbitrary | OPEN |
@@ -25,13 +24,16 @@ Ranked by what would hurt most at launch. Updated every iteration. Items move to
 
 | Item | Impact | Status |
 |---|---|---|
+| Mock illustrations are ~100 DPI in the PDF | Text is now vector and crisp at any size, but a 768x512 image on a 6.3in page prints soft. True print-on-demand needs ~2550px images, which raises generation cost | OPEN. Blocks Horizon 3 print, not screen use |
+
+| Item | Impact | Status |
+|---|---|---|
 | User enumeration on `/register` | Returns 409 for an existing address, while `/forgot-password` deliberately avoids exactly this leak. The customer list is enumerable | OPEN |
 | Postgres connection ceiling | `pool_size` 10 + `max_overflow` 20 per process, times 2 uvicorn workers plus the worker, is up to 90 against a default `max_connections` of 100. `--scale worker=3` exceeds it | OPEN |
 | CI ruff scope excludes `migrations/` | Exactly why the `env.py` lint and format problems went unnoticed. One word in `ci.yml` prevents the regression | OPEN |
 | No HSTS header | The other security headers are set; `Strict-Transport-Security` is not | OPEN |
 | No thumbnails | The library grid loads full-size illustrations as covers | OPEN |
 | Media has cache headers but no CDN | Immutable caching shipped, so re-reads are free for the browser. Origin bandwidth still scales with cold reads | PARTIAL |
-| html2pdf still loaded from a CDN | Now pinned with subresource integrity, so a tampered response cannot execute. The availability and privacy exposure of a third-party request remains | PARTIAL. Tailwind removed; SRI added in iteration 3 |
 | Polling instead of push | Every client polls every 1.2s during generation and every 5s in the library | ACCEPTED for now. Revisit with SSE at scale |
 
 ## Low
