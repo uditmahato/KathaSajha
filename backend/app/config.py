@@ -104,6 +104,12 @@ class Settings(BaseSettings):
     # bedtime does not take the story away that night.
     subscription_grace_days: int = 3
 
+    # --- PDF export ---
+    # Extra comma-separated directories searched for TTF fonts, ahead of the
+    # built-in list (vendored assets, the Noto path in the Linux image, and
+    # the Windows font folder on a dev box).
+    pdf_font_dirs: str = ""
+
     # --- CORS (empty = same-origin only, no CORS needed) ---
     cors_origins: str = ""
 

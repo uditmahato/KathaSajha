@@ -267,11 +267,13 @@ def create_app() -> FastAPI:
     media_prefix = settings.media_url_prefix.rstrip("/") + "/"
 
     # Tight by default; only the hosts the app genuinely uses are allowed.
-    # No 'unsafe-inline' for scripts: all JS lives in /assets/app.js.
+    # No 'unsafe-inline' for scripts: all JS lives in /assets/app.js. No CDN
+    # hosts either — PDFs render server-side, so the last third-party script
+    # (html2pdf) is gone.
     CSP = "; ".join(
         [
             "default-src 'self'",
-            "script-src 'self' https://cdnjs.cloudflare.com",  # html2pdf, loaded on demand
+            "script-src 'self'",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
             "img-src 'self' data: blob:",

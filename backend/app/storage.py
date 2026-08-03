@@ -17,6 +17,15 @@ class Storage(ABC):
     async def delete_story_media(self, story_id: str) -> None:
         """Best-effort removal of all images belonging to a story."""
 
+    @abstractmethod
+    async def load_image(self, url: str) -> bytes | None:
+        """Read back an image previously saved here, by its public URL.
+
+        Returns None for anything unreadable or outside this storage's own
+        namespace — the PDF renderer degrades that page rather than failing
+        the book.
+        """
+
 
 def _ext_for(mime: str) -> str:
     return {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}.get(mime, "png")
@@ -48,6 +57,29 @@ class LocalStorage(Storage):
         target = os.path.join(self.root, "stories", story_id)
         if os.path.isdir(target):
             await asyncio.to_thread(shutil.rmtree, target, ignore_errors=True)
+
+    async def load_image(self, url: str) -> bytes | None:
+        from pathlib import Path
+
+        prefix = self.url_prefix + "/"
+        if not url.startswith(prefix):
+            return None
+        root = Path(self.root).resolve()
+        # image_url values are server-generated, but this read maps a URL to a
+        # filesystem path, so it is confined to MEDIA_ROOT defensively: a
+        # crafted row must not be able to pull arbitrary files into a PDF.
+        target = (root / url[len(prefix) :]).resolve()
+        if not target.is_relative_to(root):
+            return None
+
+        def _read() -> bytes:
+            with open(target, "rb") as f:
+                return f.read()
+
+        try:
+            return await asyncio.to_thread(_read)
+        except OSError:
+            return None
 
 
 class S3Storage(Storage):
@@ -87,6 +119,24 @@ class S3Storage(Storage):
                 self.client.delete_objects(Bucket=self.bucket, Delete={"Objects": keys})
 
         await asyncio.to_thread(_delete)
+
+    async def load_image(self, url: str) -> bytes | None:
+        # Only objects under our own public base; never fetch arbitrary URLs.
+        if not self.public_base or not url.startswith(self.public_base + "/"):
+            return None
+        key = url[len(self.public_base) + 1 :]
+
+        def _get() -> bytes:
+            resp = self.client.get_object(Bucket=self.bucket, Key=key)
+            return resp["Body"].read()
+
+        try:
+            return await asyncio.to_thread(_get)
+        except Exception as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Could not read %s from S3: %s", key, e)
+            return None
 
 
 _storage: Storage | None = None

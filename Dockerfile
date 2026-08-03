@@ -7,6 +7,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Noto fonts for server-side PDF rendering. fonts-noto-core carries the
+# Devanagari faces — Nepali is a first-class language, and a book that cannot
+# set its own script is not a book.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends fonts-noto-core \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 

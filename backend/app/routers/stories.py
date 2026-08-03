@@ -1,9 +1,12 @@
-"""Story CRUD, generation kickoff, sharing."""
+"""Story CRUD, generation kickoff, sharing, PDF export."""
 
+import asyncio
 import logging
+import re
 import uuid
+from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -12,6 +15,7 @@ from ..deps import CurrentUser, DbSession
 from ..jobs import enqueue_generation
 from ..models import GenerationEvent, GenerationJob, Story, StoryPage, User
 from ..quota import (
+    enforce_auth_attempt_limit,
     enforce_burst_limit,
     enforce_daily_quota,
     enforce_global_budget,
@@ -26,7 +30,9 @@ from ..schemas import (
     StoryOut,
     StorySummaryOut,
 )
+from ..services.pdf import PdfPage, PdfUnavailableError, build_story_pdf
 from ..storage import get_storage
+from .auth import _client_ip
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/stories", tags=["stories"])
@@ -165,6 +171,87 @@ async def get_shared_story(slug: str, db: DbSession):
     if story is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shared story not found")
     return story
+
+
+# Rendering is CPU-bound thread work. The Redis limiters fail open when Redis
+# is down, so this semaphore is the line that holds regardless: it bounds
+# concurrent renders process-wide for both the owner and the public endpoint.
+_PDF_RENDER_LIMIT = asyncio.Semaphore(4)
+
+
+async def _story_pdf_response(story: Story) -> Response:
+    """Render a story as a storybook PDF and wrap it for download."""
+    storage = get_storage()
+    pdf_pages = []
+    for page in story.pages:
+        image = await storage.load_image(page.image_url) if page.image_url else None
+        pdf_pages.append(PdfPage(text=page.text, image=image))
+    try:
+        async with _PDF_RENDER_LIMIT:
+            data = await asyncio.to_thread(
+                build_story_pdf,
+                title=story.title or "A KathaSajha story",
+                language=story.language,
+                hero_name=story.hero_name,
+                pages=pdf_pages,
+                created_at=story.created_at,
+            )
+    except PdfUnavailableError as e:
+        logger.error("PDF rendering unavailable: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="PDF export is temporarily unavailable. Please try again later.",
+        ) from e
+    title = story.title or "story"
+    # ASCII fallback plus RFC 5987 UTF-8 name, so Devanagari titles survive.
+    ascii_name = re.sub(r"[^A-Za-z0-9_-]+", "_", title).strip("_")[:60] or "story"
+    # safe="" so '/' is percent-encoded too; quote() already leaves nothing
+    # that could split the header, but an unescaped slash is invalid RFC 5987.
+    disposition = (
+        f"attachment; filename=\"{ascii_name}.pdf\"; filename*=UTF-8''{quote(title[:80], safe='')}.pdf"
+    )
+    return Response(
+        content=data,
+        media_type="application/pdf",
+        headers={"Content-Disposition": disposition},
+    )
+
+
+@router.get("/shared/{slug}/pdf")
+async def shared_story_pdf(slug: str, db: DbSession, request: Request):
+    """The same PDF, for people a link was shared WITH — grandparents have no
+    account. Unauthenticated CPU work, so it is rate limited.
+
+    Keyed by slug AND client IP: behind a proxy with TRUSTED_PROXY_IPS unset,
+    every caller shares the proxy's address, and an IP-only key would give the
+    whole world one 10-per-10-minutes bucket per endpoint. Slug+IP degrades to
+    per-book-per-proxy, which a family link survives.
+    """
+    await enforce_auth_attempt_limit("shared-pdf", f"{slug}:{_client_ip(request)}")
+    story = (
+        await db.execute(
+            select(Story)
+            .where(Story.share_slug == slug, Story.status == "complete")
+            .options(selectinload(Story.pages))
+        )
+    ).scalar_one_or_none()
+    if story is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shared story not found")
+    return await _story_pdf_response(story)
+
+
+@router.get("/{story_id}/pdf")
+async def story_pdf(story_id: str, user: CurrentUser, db: DbSession):
+    # Authenticated but still unmetered CPU; a modest per-user window plus the
+    # render semaphore keeps one account from monopolising the process.
+    await enforce_auth_attempt_limit("owner-pdf", user.id)
+    story = await _load_owned_story(db, user, story_id)
+    if story.status != "complete":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The story is still being created; the book can be saved once it finishes.",
+        )
+    return await _story_pdf_response(story)
 
 
 @router.get("/{story_id}", response_model=StoryOut)

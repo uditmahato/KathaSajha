@@ -33,6 +33,13 @@ _OPENINGS_NE = [
 ]
 
 
+def _cap(s: str) -> str:
+    """Capitalise the first letter, for the fallback hero name at sentence
+    starts. A parent reads "...celebrated. our young hero had learned" as a
+    typo in their child's book — and it showed up in a real exported PDF."""
+    return s[:1].upper() + s[1:] if s else s
+
+
 class MockProvider(GenerationProvider):
     name = "mock"
 
@@ -58,9 +65,9 @@ class MockProvider(GenerationProvider):
             beats = [
                 f"{opening} there lived {hero}, whose heart was set on one thing: {req.prompt}.",
                 f"One bright morning, {hero} packed a small bag, took a deep breath, and set off. Along the winding path, unexpected friends joined the journey, each with a talent of their own.",
-                f"But the way was not easy. A great challenge rose before them, and for a moment even the bravest heart trembled. {hero} remembered what grandmother always said: courage is being scared and trying anyway.",
+                f"But the way was not easy. A great challenge rose before them, and for a moment even the bravest heart trembled. {_cap(hero)} remembered what grandmother always said: courage is being scared and trying anyway.",
                 f"Working together, using every clever idea they had, {hero} and the new friends faced the challenge head-on. And slowly, wonderfully, things began to change.",
-                f"When they returned home, the whole village celebrated. {hero} had learned that kindness and courage, shared with friends, can move mountains.",
+                f"When they returned home, the whole village celebrated. {_cap(hero)} had learned that kindness and courage, shared with friends, can move mountains.",
             ]
         paragraphs = beats[:n]
         image_prompts = [

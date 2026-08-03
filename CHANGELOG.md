@@ -1,5 +1,28 @@
 # Changelog
 
+## Iteration 4: the PDF becomes a book
+
+### Added
+- **Server-side PDF rendering** (`GET /api/stories/{id}/pdf`, and
+  `GET /api/stories/shared/{slug}/pdf` so grandparents without accounts get the
+  book too). Real storybook layout: cream cover with framed art and the child's
+  name, one scene per page with vector text and page numbers, a back cover.
+  Page count is exactly pages + 2, a property the tests now pin by parsing the
+  output with pypdf. Devanagari renders through real text shaping (uharfbuzz);
+  fonts resolve per-platform (Noto in the image and CI, system fonts on a dev
+  box), verified visually in both languages.
+
+### Removed
+- **html2pdf and the last CDN script.** The old exporter screenshotted the DOM
+  into JPEGs, and a CSS sizing bug shipped two blank sheets after every content
+  page: a 5-page story exported as 15 pages, 10 of them blank, with a blank
+  cover. Found by opening a real exported file, not by any test. The CSP now
+  reads `script-src 'self'`.
+
+### Fixed
+- The mock provider interpolated a lowercase fallback hero mid-sentence
+  ("...celebrated. our young hero had learned"), visible in exported books.
+
 ## Iteration 3: request hardening and session revocation
 
 ### Added
