@@ -46,15 +46,58 @@ mimetypes.add_type("text/css", ".css")
 mimetypes.add_type("image/svg+xml", ".svg")
 
 
+def validate_production_settings(settings) -> None:
+    """Refuse to boot production with silently-broken account recovery.
+
+    The console email backend prints password-reset links into the log and
+    sends nothing. In development that is the feature; in production it means
+    every locked-out parent stays locked out while secrets leak into logs, and
+    nothing anywhere looks wrong. Same fail-loud philosophy as the billing
+    guard. Pure function because the test client never runs lifespan.
+    """
+    if settings.environment != "production":
+        return
+    if settings.email_backend == "console":
+        raise RuntimeError(
+            "EMAIL_BACKEND is 'console' in production: password-reset links would be "
+            "written to the log and never delivered. Configure EMAIL_BACKEND=smtp "
+            "and the SMTP_* settings."
+        )
+    if settings.email_backend == "smtp" and not settings.smtp_host:
+        # Same silent failure by another route: smtplib.SMTP("") constructs
+        # without connecting, the first command raises, and SmtpEmailSender
+        # swallows it by design — so every reset email is dropped while
+        # /forgot-password still reports success. SMTP_HOST ships empty, so
+        # this is one forgotten variable away in the exact flow GO_LIVE walks
+        # an operator through.
+        raise RuntimeError(
+            "EMAIL_BACKEND is 'smtp' in production but SMTP_HOST is empty: every "
+            "password-reset email would be silently dropped. Set SMTP_HOST."
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
+    if settings.sentry_dsn:
+        # Dormant until a DSN exists, like billing. Errors-only: tracing costs
+        # money and the structured logs already carry request correlation.
+        import sentry_sdk
+
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            environment=settings.environment,
+            traces_sample_rate=0,
+            send_default_pii=False,
+        )
+        logger.info("Sentry error tracking enabled")
     await init_db()
     _KNOWN_DEV_SECRETS = {"change-me-in-production", "dev-only-secret-change-me", "test-secret"}
     if settings.environment == "production" and (
         settings.secret_key in _KNOWN_DEV_SECRETS or len(settings.secret_key) < 32
     ):
         raise RuntimeError("SECRET_KEY must be set to a long random value in production")
+    validate_production_settings(settings)
     # Refuses to boot on half-configured billing, in every environment: a
     # partially-wired dev box creates real test-mode sessions and has the same
     # shape of bug, and enforcing uniformly means the dev config proves the
@@ -285,9 +328,14 @@ def create_app() -> FastAPI:
         ]
     )
 
+    # HSTS only where TLS exists; on a dev box it would poison localhost.
+    hsts = settings.environment == "production"
+
     @app.middleware("http")
     async def security_and_cache_headers(request: Request, call_next):
         response = await call_next(request)
+        if hsts:
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
@@ -374,6 +422,14 @@ def create_app() -> FastAPI:
         @app.get("/reset-password", include_in_schema=False)
         async def spa_reset_password():
             return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+
+        @app.get("/privacy", include_in_schema=False)
+        async def privacy_page():
+            return FileResponse(os.path.join(FRONTEND_DIR, "privacy.html"))
+
+        @app.get("/terms", include_in_schema=False)
+        async def terms_page():
+            return FileResponse(os.path.join(FRONTEND_DIR, "terms.html"))
 
         @app.get("/billing/return", include_in_schema=False)
         async def spa_billing_return():

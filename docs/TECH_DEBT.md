@@ -7,8 +7,8 @@ Ranked by what would hurt most at launch. Updated every iteration. Items move to
 | Item | Impact | Status |
 |---|---|---|
 | Leaked `GOOGLE_API_KEY` in git history (commit `b3f882e`) | Anyone who clones the public repo can bill the owner's account | OPEN. Owner must rotate the key in Google AI Studio. Deleting the file does not help; the object is still in history |
-| No error tracker | Structured JSON logs with correlation ids now exist, but nothing aggregates or alerts. A crash at 2am is discovered by a user, not by us | PARTIAL. Logging shipped in iteration 2; Sentry or equivalent still missing |
-| Legal surface for a children's product | Privacy policy, terms, and a data deletion path are still absent, and this is a product about children | OPEN |
+| No error tracker | Sentry wiring shipped, dormant until a DSN exists | PARTIAL. Needs a Sentry project + SENTRY_DSN |
+| Legal surface for a children's product | Drafts of privacy/terms shipped and a full in-app deletion path exists. Blocked on qualified legal review and real contact details | PARTIAL. See GO_LIVE.md |
 
 ## High
 
@@ -18,7 +18,6 @@ Ranked by what would hurt most at launch. Updated every iteration. Items move to
 | Frontend has no automated tests | 851 lines of `app.js` and every regression is caught only by manual browsing | OPEN |
 | No type checking or dependency scanning in CI | Ruff lint and format run, plus a migration drift check. Nothing catches type errors or vulnerable dependencies | PARTIAL |
 | Quota day boundary is UTC | A parent in Kathmandu (UTC+5:45) sees the daily limit reset mid-morning, which feels arbitrary | OPEN |
-| Console email backend can run in production | `EMAIL_BACKEND` defaults to `console`. A deploy that forgets to set `smtp` writes reset links to the log and sends nothing, with no startup failure. The production `SECRET_KEY` guard should cover this too | OPEN |
 
 ## Medium
 
@@ -31,7 +30,6 @@ Ranked by what would hurt most at launch. Updated every iteration. Items move to
 | User enumeration on `/register` | Returns 409 for an existing address, while `/forgot-password` deliberately avoids exactly this leak. The customer list is enumerable | OPEN |
 | Postgres connection ceiling | `pool_size` 10 + `max_overflow` 20 per process, times 2 uvicorn workers plus the worker, is up to 90 against a default `max_connections` of 100. `--scale worker=3` exceeds it | OPEN |
 | CI ruff scope excludes `migrations/` | Exactly why the `env.py` lint and format problems went unnoticed. One word in `ci.yml` prevents the regression | OPEN |
-| No HSTS header | The other security headers are set; `Strict-Transport-Security` is not | OPEN |
 | No thumbnails | The library grid loads full-size illustrations as covers | OPEN |
 | Media has cache headers but no CDN | Immutable caching shipped, so re-reads are free for the browser. Origin bandwidth still scales with cold reads | PARTIAL |
 | Polling instead of push | Every client polls every 1.2s during generation and every 5s in the library | ACCEPTED for now. Revisit with SSE at scale |

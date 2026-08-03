@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - KathaSajha</title>
+    <meta name="robots" content="noindex">
+    <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-inner">
+            <a class="brand" href="/">
+                <h1>KathaSajha <span class="brand-nepali">कथा साझा</span></h1>
+            </a>
+        </div>
+    </header>
+    <main class="app-main legal-page">
+        <h1>Privacy Policy</h1>
+        <p class="muted small">
+            Last updated: August 2026 · <strong>Draft pending review by qualified legal
+            counsel.</strong> This page describes what the service actually does today; it is
+            not yet legal advice or a final policy.
+        </p>
+
+        <h2>Who we are, and who this service is for</h2>
+        <p>
+            KathaSajha creates illustrated children's stories from ideas that parents and
+            guardians type in. <strong>Accounts are for adults.</strong> Children do not create
+            accounts, do not log in, and cannot submit information to us directly. If you are
+            under 18, please ask a parent or guardian to use KathaSajha with you.
+        </p>
+
+        <h2>What we collect</h2>
+        <ul>
+            <li><strong>Account:</strong> your email address, a password (stored only as a
+                bcrypt hash, never as text), and an optional display name.</li>
+            <li><strong>Stories:</strong> the ideas you type, the stories and illustrations
+                generated from them, and — optionally — a child's first name if you choose to
+                make them the hero. We ask you not to include surnames, birthdays, addresses,
+                or any other identifying details about a child in prompts or names.</li>
+            <li><strong>Usage and technical data:</strong> counts of stories created (used to
+                enforce plan limits), timestamps, and request logs that include IP addresses,
+                kept for security and abuse prevention.</li>
+            <li><strong>Payment:</strong> if you subscribe, payment is processed by Stripe. We
+                never see or store card numbers — only Stripe's identifiers for your customer
+                record and subscription status.</li>
+        </ul>
+
+        <h2>Children's information</h2>
+        <p>
+            The only child-related information we handle is what a parent chooses to type: a
+            first name and a story idea. It is provided by the parent, used solely to
+            personalise that family's stories, never used for advertising, and deleted with the
+            account. We do not knowingly collect personal information from children themselves.
+            If you believe a child has submitted information to us directly, contact us and we
+            will delete it.
+        </p>
+
+        <h2>Who processes data on our behalf</h2>
+        <ul>
+            <li><strong>Google (Gemini API):</strong> your story idea and the child's first
+                name, if provided, are sent to Google's generative AI service to write and
+                illustrate the story.</li>
+            <li><strong>Stripe:</strong> subscription billing.</li>
+            <li><strong>Our hosting provider:</strong> runs the servers and database.</li>
+        </ul>
+        <p>We do not sell personal information, and we do not use it for advertising.</p>
+
+        <h2>Sharing</h2>
+        <p>
+            A story is private to your account until you create a share link. Anyone with the
+            link can read that story and download its book, without an account. You can revoke
+            a link at any time from the story page: the shared page and book download stop
+            working immediately. Illustration files already loaded may remain in browser or
+            network caches, and anyone who saved an image's direct address could still reach
+            that image until the story itself is deleted.
+        </p>
+
+        <h2>How long we keep things</h2>
+        <p>
+            Account data and stories are kept until you delete them or delete your account.
+            Generation records — a timestamp, which AI provider was used, and how much it
+            cost — are retained as financial records; when you delete your account these are
+            detached from you, keeping no reference to your account or your stories. Security
+            logs containing IP addresses are retained for up to 30 days.
+        </p>
+
+        <h2>Deleting your account</h2>
+        <p>
+            Use <strong>Delete my account</strong> in the site footer while logged in. It
+            removes your account, every story and illustration, and any child names from the
+            live service immediately, and asks our payment processor to cancel any active
+            subscription. Copies may persist in encrypted database backups until those
+            backups rotate out (currently within 30 days). Anonymous generation records —
+            counts and timestamps with no link to you — are kept as financial records. You
+            can also request deletion by email.
+        </p>
+
+        <h2>Your rights</h2>
+        <p>
+            Depending on where you live (including under the GDPR), you may have rights to
+            access, correct, export, or erase your personal data, and to complain to a
+            supervisory authority. Contact us to exercise any of them.
+        </p>
+
+        <h2>Contact</h2>
+        <p>
+            <!-- TODO before launch: replace with the real legal contact address. -->
+            <strong>[contact email to be added before launch]</strong>
+        </p>
+    </main>
+    <footer class="site-footer">
+        <p class="muted small">KathaSajha · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>
+    </footer>
+</body>
+</html>

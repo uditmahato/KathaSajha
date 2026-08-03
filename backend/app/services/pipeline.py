@@ -180,6 +180,19 @@ async def run_generation(story_id: str) -> None:
                     page.image_url = url
                     page.image_error = err
                     await session.commit()
+                elif url:
+                    # The page vanished while this illustration was being made:
+                    # the account or story was deleted mid-generation. The file
+                    # was already written, and save_image recreates the very
+                    # directory deletion just removed, so nothing else will ever
+                    # reclaim it — the row that would have pointed at it is gone.
+                    # On a children's product that is a picture derived from a
+                    # child's name sitting on a public media mount forever.
+                    logger.info("Story %s disappeared mid-generation; removing orphaned media", story_id)
+                    try:
+                        await storage.delete_story_media(story_id)
+                    except Exception as e:
+                        logger.error("Could not remove orphaned media for %s: %s", story_id, e)
             # Progress write stays inside the lock so a slower task can't
             # overwrite a higher count with a lower one. Usage accumulates in
             # the same critical section for the same reason.
@@ -189,6 +202,20 @@ async def run_generation(story_id: str) -> None:
                 await _update_job(job_id, progress_current=done_count)
 
         await asyncio.gather(*(illustrate_one(i, p) for i, p in enumerate(draft.image_prompts)))
+
+        # Final sweep: if the story was deleted while the last images were in
+        # flight, every write after the endpoint's rmtree is orphaned. Cheap,
+        # and it closes the window the per-image check cannot (a save landing
+        # after that check but before deletion committed).
+        async with factory() as session:
+            if await session.get(Story, story_id) is None:
+                logger.info("Story %s deleted during generation; sweeping media", story_id)
+                try:
+                    await storage.delete_story_media(story_id)
+                except Exception as e:
+                    logger.error("Media sweep for deleted story %s failed: %s", story_id, e)
+                return
+
         await _record_usage(story_id, provider.name, total_usage)
 
         async with factory() as session:

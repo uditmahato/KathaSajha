@@ -1,5 +1,23 @@
 # Changelog
 
+## Iteration 5: release gates
+
+### Added
+- **Account deletion** (`DELETE /api/auth/me`, password-confirmed, plus a
+  footer flow in the app): stories, illustrations, and reset tokens are erased;
+  an active subscription is best-effort cancelled; the generation ledger is
+  **anonymised, not deleted** — its FK is now SET NULL, because the global cost
+  ceiling counts those rows and cascading them let create-generate-delete loops
+  drain the platform budget invisibly.
+- **Privacy policy and terms** at `/privacy` and `/terms` — honest drafts of
+  what the code actually does, flagged for legal review — with consent links on
+  signup and in the footer.
+- **Production guards**: the console email backend refuses to boot in
+  production (reset links would go to logs and never send); HSTS is emitted in
+  production only.
+- **Sentry error tracking**, dormant until `SENTRY_DSN` is set, errors-only.
+- `docs/GO_LIVE.md` (owner checklist) and `docs/DEPLOYMENT.md`.
+
 ## Iteration 4: the PDF becomes a book
 
 ### Added

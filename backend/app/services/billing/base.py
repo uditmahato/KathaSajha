@@ -116,6 +116,11 @@ class BillingProvider(ABC):
         """Read a subscription back, for events that only carry its id."""
 
     @abstractmethod
+    async def cancel_subscription(self, subscription_id: str) -> bool:
+        """Cancel immediately. Returns success; must not raise — account
+        deletion cannot be blocked by a provider outage."""
+
+    @abstractmethod
     def verify_webhook(self, *, payload: bytes, signature: str) -> BillingEvent:
         """Verify a signature over the RAW body and parse it.
 

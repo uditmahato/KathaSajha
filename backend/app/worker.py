@@ -27,6 +27,19 @@ async def startup(ctx: dict) -> None:
     # Ensure tables exist even if the worker starts before the API.
     from .db import init_db
 
+    settings = get_settings()
+    if settings.sentry_dsn:
+        # The API's lifespan init does not reach this process, and generation
+        # failures — the ones a parent actually notices — happen HERE.
+        import sentry_sdk
+
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            environment=settings.environment,
+            traces_sample_rate=0,
+            send_default_pii=False,
+        )
+        logger.info("Sentry error tracking enabled in worker")
     await init_db()
     logger.info("Worker started", extra={"provider": get_settings().resolved_provider})
 

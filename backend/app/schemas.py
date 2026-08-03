@@ -52,6 +52,12 @@ class MessageResponse(BaseModel):
     message: str
 
 
+class DeleteAccountRequest(BaseModel):
+    # Password re-entry, so a borrowed open session cannot erase a family's
+    # library. Bounded like every other password field.
+    password: str = Field(max_length=128)
+
+
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(max_length=128)
     new_password: str = Field(min_length=8, max_length=128)

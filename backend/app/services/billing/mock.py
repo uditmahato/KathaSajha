@@ -119,6 +119,11 @@ class MockBillingProvider(BillingProvider):
                 return result.subscription
         return None
 
+    async def cancel_subscription(self, subscription_id: str) -> bool:
+        self.cancelled: list[str] = getattr(self, "cancelled", [])
+        self.cancelled.append(subscription_id)
+        return True
+
     def verify_webhook(self, *, payload: bytes, signature: str) -> BillingEvent:
         verify_signature(payload, signature, self.webhook_secret)
         try:

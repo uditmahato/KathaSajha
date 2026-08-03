@@ -8,7 +8,8 @@ from sqlalchemy import select, update
 
 from ..config import get_settings
 from ..deps import CurrentUser, DbSession
-from ..models import PasswordResetToken, User
+from ..models import BillingEventRecord, PasswordResetToken, Story, User
+from ..plans import ACTIVE_SUBSCRIPTION_STATUSES
 from ..quota import (
     daily_limit_for,
     effective_plan_for,
@@ -20,6 +21,7 @@ from ..quota import (
 from ..schemas import (
     ChangePasswordRequest,
     ChangePasswordResponse,
+    DeleteAccountRequest,
     ForgotPasswordRequest,
     LoginRequest,
     MessageResponse,
@@ -37,6 +39,7 @@ from ..security import (
     verify_password,
 )
 from ..services.email import get_email_sender
+from ..storage import get_storage
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -188,6 +191,57 @@ async def change_password(body: ChangePasswordRequest, user: CurrentUser, db: Db
 @router.get("/me", response_model=UserOut)
 async def me(user: CurrentUser):
     return user
+
+
+@router.delete("/me", response_model=MessageResponse)
+async def delete_account(body: DeleteAccountRequest, user: CurrentUser, db: DbSession):
+    """Erase the account: the legal deletion path for a children's product.
+
+    Stories, pages, jobs, reset tokens, and plan interest cascade away and the
+    media files are removed. The generation ledger is ANONYMISED, not deleted
+    (its FK is SET NULL): it is the platform's financial record and the global
+    cost ceiling counts it, so cascading it would let create-generate-delete
+    loops drain the budget invisibly.
+    """
+    await enforce_auth_attempt_limit("delete-account", user.id)
+    if not verify_password(body.password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Password is incorrect")
+
+    settings = get_settings()
+    # Only a subscription that is actually live: a long-cancelled one would
+    # raise a false "cancel manually" incident on every deletion.
+    if user.stripe_subscription_id and user.stripe_subscription_status in ACTIVE_SUBSCRIPTION_STATUSES:
+        cancelled = False
+        if settings.billing_enabled:
+            from ..services.billing import get_billing
+
+            # Best-effort: deletion must never be blocked by a Stripe outage.
+            cancelled = await get_billing().cancel_subscription(user.stripe_subscription_id)
+        if not cancelled:
+            logger.error(
+                "ACCOUNT DELETED WITH LIVE SUBSCRIPTION - cancel manually",
+                extra={"subscription_id": user.stripe_subscription_id},
+            )
+
+    story_ids = (await db.execute(select(Story.id).where(Story.user_id == user.id))).scalars().all()
+    # Billing audit rows carry no FK; anonymise them explicitly.
+    await db.execute(
+        update(BillingEventRecord).where(BillingEventRecord.user_id == user.id).values(user_id=None)
+    )
+    user_id = user.id
+    await db.delete(user)  # cascades stories/pages/jobs/tokens/interest; ledger SET NULL
+    await db.commit()
+
+    # Media AFTER the commit, matching delete_story's order: a failed commit
+    # would otherwise leave an intact account whose illustrations were erased.
+    storage = get_storage()
+    for story_id in story_ids:
+        try:
+            await storage.delete_story_media(story_id)
+        except Exception as e:
+            logger.warning("Media cleanup for %s failed during deletion: %s", story_id, e)
+    logger.info("Account deleted", extra={"user_id": user_id, "stories": len(story_ids)})
+    return MessageResponse(message="Your account and all of your stories have been deleted.")
 
 
 @router.get("/usage", response_model=UsageOut)
