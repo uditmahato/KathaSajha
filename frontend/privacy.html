@@ -13,10 +13,26 @@
             <a class="brand" href="/">
                 <h1>KathaSajha <span class="brand-nepali">कथा साझा</span></h1>
             </a>
+            <div class="locale-switch">
+                <label class="sr-only" for="localeSelect" data-i18n="nav.language">Language</label>
+                <select id="localeSelect" class="locale-select">
+                    <option value="en">English</option>
+                    <option value="ne" lang="ne">नेपाली</option>
+                </select>
+            </div>
         </div>
     </header>
     <main class="app-main legal-page">
         <h1>Privacy Policy</h1>
+        <!-- Shown only to a Nepali reader. This document is English-only pending
+             legal review, and consenting to a policy you cannot read is not
+             consent; saying so plainly is the honest interim answer. -->
+        <div class="notice legal-notice hidden" lang="ne" data-i18n-locale-only="ne">
+            <strong data-i18n="legal.english_only.title">This page is available in English only</strong>
+            <p data-i18n="legal.english_only.body">This legal document is currently available in
+                English only, and the English version is the legally binding one. A Nepali
+                translation is being prepared. If anything here is unclear, please ask us.</p>
+        </div>
         <p class="muted small">
             Last updated: August 2026 · <strong>Draft pending review by qualified legal
             counsel.</strong> This page describes what the service actually does today; it is
@@ -128,5 +144,6 @@
     <footer class="site-footer">
         <p class="muted small">KathaSajha · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>
     </footer>
+    <script src="/assets/i18n.js"></script>
 </body>
 </html>

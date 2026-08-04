@@ -6,12 +6,13 @@ import re
 import uuid
 from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from ..config import get_settings
 from ..deps import CurrentUser, DbSession
+from ..errors import GENERATION_FAILED, CodedHTTPException
 from ..jobs import enqueue_generation
 from ..models import (
     ChildProfile,
@@ -80,8 +81,10 @@ async def _resolve_cast(db, user, body: CreateStoryRequest) -> list[cast_service
         )
         by_id = {r.id: r for r in rows}
         if len(by_id) != len(set(body.child_ids)):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="One of those children was not found"
+            raise CodedHTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                code="story.child_not_found",
+                detail="One of those children was not found",
             )
         for cid in body.child_ids:
             child = by_id[cid]
@@ -103,8 +106,10 @@ async def _resolve_cast(db, user, body: CreateStoryRequest) -> list[cast_service
         )
         by_id = {r.id: r for r in rows}
         if len(by_id) != len(set(body.companion_ids)):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="One of those characters was not found"
+            raise CodedHTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                code="story.companion_not_found",
+                detail="One of those characters was not found",
             )
         for cid in body.companion_ids:
             comp = by_id[cid]
@@ -123,9 +128,11 @@ async def _resolve_cast(db, user, body: CreateStoryRequest) -> list[cast_service
 async def create_story(body: CreateStoryRequest, user: CurrentUser, db: DbSession):
     settings = get_settings()
     if len(body.prompt) > settings.max_prompt_chars:
-        raise HTTPException(
+        raise CodedHTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            code="story.prompt_too_long",
             detail=f"Prompt is too long (max {settings.max_prompt_chars} characters)",
+            params={"max": settings.max_prompt_chars},
         )
     await enforce_burst_limit(user)
     await enforce_global_budget(db)
@@ -169,15 +176,18 @@ async def create_story(body: CreateStoryRequest, user: CurrentUser, db: DbSessio
         logger.error("Failed to enqueue story %s: %s", story.id, e, exc_info=True)
         story.status = "failed"
         story.error = "Could not start generation. Please try again in a moment."
+        story.error_code = GENERATION_FAILED
         job.status = "failed"
         job.stage = "failed"
         job.error = story.error
+        job.error_code = story.error_code
         # Nothing was generated, so do not charge the user for it.
         event.refunded = True
         event.refund_reason = "enqueue_failed"
         await db.commit()
-        raise HTTPException(
+        raise CodedHTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            code="story.service_unavailable",
             detail="Story service is briefly unavailable. Please try again.",
         ) from e
     return CreateStoryResponse(story_id=story.id, job_id=job.id)
@@ -243,7 +253,9 @@ async def _load_owned_story(db, user, story_id: str) -> Story:
         )
     ).scalar_one_or_none()
     if story is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Story not found")
+        raise CodedHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, code="story.not_found", detail="Story not found"
+        )
     return story
 
 
@@ -258,7 +270,11 @@ async def get_shared_story(slug: str, db: DbSession):
         )
     ).scalar_one_or_none()
     if story is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shared story not found")
+        raise CodedHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="story.shared_not_found",
+            detail="Shared story not found",
+        )
     return story
 
 
@@ -287,8 +303,9 @@ async def _story_pdf_response(story: Story) -> Response:
             )
     except PdfUnavailableError as e:
         logger.error("PDF rendering unavailable: %s", e)
-        raise HTTPException(
+        raise CodedHTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            code="story.pdf_unavailable",
             detail="PDF export is temporarily unavailable. Please try again later.",
         ) from e
     title = story.title or "story"
@@ -325,7 +342,11 @@ async def shared_story_pdf(slug: str, db: DbSession, request: Request):
         )
     ).scalar_one_or_none()
     if story is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shared story not found")
+        raise CodedHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="story.shared_not_found",
+            detail="Shared story not found",
+        )
     return await _story_pdf_response(story)
 
 
@@ -336,8 +357,9 @@ async def story_pdf(story_id: str, user: CurrentUser, db: DbSession):
     await enforce_auth_attempt_limit("owner-pdf", user.id)
     story = await _load_owned_story(db, user, story_id)
     if story.status != "complete":
-        raise HTTPException(
+        raise CodedHTTPException(
             status_code=status.HTTP_409_CONFLICT,
+            code="story.pdf_not_ready",
             detail="The story is still being created; the book can be saved once it finishes.",
         )
     return await _story_pdf_response(story)
@@ -359,8 +381,10 @@ async def get_story(story_id: str, user: CurrentUser, db: DbSession):
 async def share_story(story_id: str, user: CurrentUser, db: DbSession, request: Request):
     story = await _load_owned_story(db, user, story_id)
     if story.status != "complete":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Only completed stories can be shared"
+        raise CodedHTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            code="story.share_not_complete",
+            detail="Only completed stories can be shared",
         )
     if not story.share_slug:
         story.share_slug = uuid.uuid4().hex[:12]
@@ -380,8 +404,9 @@ async def unshare_story(story_id: str, user: CurrentUser, db: DbSession):
 async def delete_story(story_id: str, user: CurrentUser, db: DbSession):
     story = await _load_owned_story(db, user, story_id)
     if story.status in ("pending", "generating"):
-        raise HTTPException(
+        raise CodedHTTPException(
             status_code=status.HTTP_409_CONFLICT,
+            code="story.delete_while_generating",
             detail="Story is still generating; wait for it to finish before deleting",
         )
     await db.delete(story)

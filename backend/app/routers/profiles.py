@@ -9,10 +9,11 @@ child; a name, kind, and short description for a pet or toy.
 import logging
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, status
 from sqlalchemy import func, select
 
 from ..deps import CurrentUser, DbSession
+from ..errors import CodedHTTPException
 from ..models import ChildProfile, CompanionCharacter
 from ..schemas import ChildProfileOut, ChildProfileRequest, CompanionOut, CompanionRequest
 
@@ -47,9 +48,11 @@ async def list_children(user: CurrentUser, db: DbSession):
 @router.post("/children", response_model=ChildProfileOut, status_code=status.HTTP_201_CREATED)
 async def create_child(body: ChildProfileRequest, user: CurrentUser, db: DbSession):
     if await _count(db, ChildProfile, user.id) >= MAX_CHILDREN:
-        raise HTTPException(
+        raise CodedHTTPException(
             status_code=status.HTTP_409_CONFLICT,
+            code="profile.child_limit",
             detail=f"You can save up to {MAX_CHILDREN} children.",
+            params={"max": MAX_CHILDREN},
         )
     child = ChildProfile(
         user_id=user.id,
@@ -70,7 +73,9 @@ async def update_child(child_id: str, body: ChildProfileRequest, user: CurrentUs
         )
     ).scalar_one_or_none()
     if child is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Child not found")
+        raise CodedHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, code="profile.child_not_found", detail="Child not found"
+        )
     child.name = body.name
     if body.age_band != child.age_band:
         # Only a band change restamps the date; renaming should not make the
@@ -92,7 +97,9 @@ async def delete_child(child_id: str, user: CurrentUser, db: DbSession):
         )
     ).scalar_one_or_none()
     if child is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Child not found")
+        raise CodedHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, code="profile.child_not_found", detail="Child not found"
+        )
     await db.delete(child)
     await db.commit()
 
@@ -116,9 +123,11 @@ async def list_companions(user: CurrentUser, db: DbSession):
 @router.post("/companions", response_model=CompanionOut, status_code=status.HTTP_201_CREATED)
 async def create_companion(body: CompanionRequest, user: CurrentUser, db: DbSession):
     if await _count(db, CompanionCharacter, user.id) >= MAX_COMPANIONS:
-        raise HTTPException(
+        raise CodedHTTPException(
             status_code=status.HTTP_409_CONFLICT,
+            code="profile.companion_limit",
             detail=f"You can save up to {MAX_COMPANIONS} characters.",
+            params={"max": MAX_COMPANIONS},
         )
     companion = CompanionCharacter(
         user_id=user.id, name=body.name, kind=body.kind, description=body.description
@@ -138,6 +147,10 @@ async def delete_companion(companion_id: str, user: CurrentUser, db: DbSession):
         )
     ).scalar_one_or_none()
     if companion is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+        raise CodedHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="profile.companion_not_found",
+            detail="Character not found",
+        )
     await db.delete(companion)
     await db.commit()

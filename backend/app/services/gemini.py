@@ -12,6 +12,7 @@ import secrets
 from pydantic import BaseModel, Field
 
 from ..config import get_settings
+from ..errors import GENERATION_BLOCKED
 from . import cast as cast_service
 from . import reading_level
 from .base import GeneratedImage, GenerationError, GenerationProvider, StoryDraft, StoryRequest, Usage
@@ -224,6 +225,11 @@ class GeminiProvider(GenerationProvider):
             raise GenerationError(
                 f"Story model returned no parsable content (feedback: {feedback})",
                 user_message="We couldn't write a story for that idea. Please try a gentler, kid-friendly idea.",
+                # Must be set wherever user_message is. The client prefers the
+                # code over the stored prose, so leaving this generic would tell
+                # a Nepali parent only "it failed, try again" and translate away
+                # the one instruction that changes the outcome — soften the idea.
+                code=GENERATION_BLOCKED,
             )
 
         paragraphs = [p.strip() for p in parsed.paragraphs if p.strip()][: req.max_paragraphs]

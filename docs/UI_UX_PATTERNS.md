@@ -37,6 +37,23 @@ or shared). `show()` also swaps the header nav between guest and user states.
 7. **Mobile first ergonomics**: single column under 40rem, controls reachable one-handed, targets at
    least 44px tall.
 8. **Nepali is first class**: Devanagari must render at a comfortable size and never be clipped.
+9. **Every new user-facing string gets a key.** Static text is annotated `data-i18n="key"` in the
+   markup; text built in JS goes through `t('key')` with an entry in the `EN` table in
+   `frontend/i18n.js`. Both need a Nepali value in `frontend/i18n/ne.js`. `backend/tests/test_i18n.py`
+   fails the build for markup that has no key, but the `app.js` side is only partly checkable — so
+   this is a review-checklist item, not only a CI one.
+10. **A translatable element must have no element children**, unless it declares
+    `data-i18n-slots` and each child carries `data-i18n-slot`. Otherwise the applier's
+    `textContent` write deletes the markup — which is how a consent sentence loses its links.
+
+## Two languages, two axes
+
+The **interface locale** (header switcher, stored in `localStorage`) and the **story language**
+(the `#storyLanguage` select, stored on the row) are independent and must stay that way. A parent
+who reads Nepali may well want an English story, and the reverse. The PDF follows the story's
+language, never the reader's interface. The i18n catalogue is for text shown to a human: model
+instructions in `services/gemini.py` and `services/reading_level.py` are English regardless of
+story language and never go through it.
 
 ## Copy voice
 

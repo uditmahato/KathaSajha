@@ -95,6 +95,56 @@ children's first names and reading bands into a processor the privacy page never
 **Rule**: log counts and ids, never names or attributes of a person. If an identity is genuinely
 needed to debug, hash it.
 
+## A sentence that contains a link is not a string
+The signup consent note is one sentence wrapping two anchors, to the Terms and to the Privacy
+Policy. The obvious translation applier sets `textContent`, which would have deleted both links
+and shipped an account-creation flow with no route to the documents it claims consent to - on a
+children's product, on the branch whose sibling exists to harden exactly that surface.
+**Rule**: a translatable element with element children needs a slot mechanism that re-threads
+the real nodes through the translated string, and a test that asserts the links survive in every
+locale. Never `innerHTML` a catalogue value: the catalogue is data.
+
+## Two homes for one English sentence will drift
+The progress panel's default markup said "Queued..." while the JS catalogue said "Waiting in the
+queue…" for the same key. Both were "the English", neither was wrong, and nobody would ever have
+noticed - the Nepali reader would have got one translation for two different English strings.
+**Rule**: when a key's English lives in more than one place, assert in CI that the copies match.
+The gate found this on its first run.
+
+## Translate the errors in the same change as the interface
+The natural order is static text first, server messages last, which produces an app that speaks
+the user's language while things go well and switches to English the moment it errors, hits a
+quota wall, or asks for money. That reads as a product pretending to speak the language.
+**Rule**: ship i18n by complete vertical slice, not by percentage. A flow is not translated until
+every error it can produce is translated too, including the ones frozen into database rows by a
+worker in another process - which is why those need a code column, not a header.
+
+## Replacing a literal with a call can wake a sleeping shadow
+`api()` had `const t = token()` for as long as it had existed, harmlessly, because the next use of
+`t` was a bearer header. The i18n pass replaced the literal on the line below with
+`t('err.session_expired')` - and that call now resolved to a JWT string. Every expired session
+showed the parent "t is not a function". The same shadow sat in the PDF handler. Both were invisible
+in review because neither line was wrong on its own; only the pair was.
+**Rule**: when a short name becomes a project-wide helper, reserve it - a test asserts it is never
+rebound. More generally, changing a literal into a function call is a scope change, not a text edit.
+
+## A guard you have not seen fail is not a guard
+Twelve drift gates were written and all passed. An adversarial pass then added an untranslated
+string, an unkeyed aria-label, a Devanagari numeral, a new page, an uncoded exception, and an
+English value posing as Nepali - and every one shipped green. The gates were testing that correct
+code is correct.
+**Rule**: every gate is validated by breaking the thing it protects and watching it fail, then
+reverting. Two of these needed real fixes to fire at all - the HTML parser desynced on an omitted
+`</li>`, and the boot-order check could not tell a top-level `if` block from a function body.
+
+## Say the honest number, not the flattering one
+The i18n design was described, in a code comment and to the owner, as costing an English user
+"zero extra requests, zero extra bytes". It costs one blocking request and about 7 KB gzipped on a
+cold visit. The claim that was actually true and actually worth making - same markup, same English,
+same code path - was weakened by being overstated next to a number anyone could check.
+**Rule**: measure before claiming, and put the measurement in the comment. A defensible smaller
+claim beats an impressive one that a reviewer can disprove in a minute.
+
 ## Verify in the browser, not just in tests
 Several defects (blank views on a rejected promise, stale "session expired" errors after re-login) were
 invisible to API tests and obvious in the browser.
