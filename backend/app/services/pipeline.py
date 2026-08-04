@@ -11,8 +11,10 @@ from sqlalchemy import delete, select, update
 
 from ..config import get_settings
 from ..db import get_session_factory
+from ..errors import GENERATION_FAILED
 from ..models import GenerationEvent, GenerationJob, Story, StoryPage
 from ..storage import get_storage
+from . import cast as cast_service
 from .base import GenerationError, GenerationProvider, StoryRequest, Usage
 
 logger = logging.getLogger(__name__)
@@ -111,11 +113,15 @@ async def run_generation(story_id: str) -> None:
             logger.error("run_generation: job for story %s not found", story_id)
             return
         job_id = job.id
+        # Read inside the session; the row is detached once it closes.
+        story_cast_json = story.cast_json
         req = StoryRequest(
             prompt=story.prompt,
             language=story.language,
             hero_name=story.hero_name,
             max_paragraphs=settings.max_paragraphs,
+            cast_json=story.cast_json,
+            reading_band=story.reading_band,
         )
 
     try:
@@ -137,6 +143,28 @@ async def run_generation(story_id: str) -> None:
             for i, (text, img_prompt) in enumerate(zip(draft.paragraphs, draft.image_prompts, strict=False)):
                 session.add(StoryPage(story_id=story_id, position=i, text=text, image_prompt=img_prompt))
             await session.commit()
+
+        # Measure whether every named child actually got to act. Logged, not
+        # repaired: a repair call doubles the cost of the most expensive story
+        # shape, and there is no live-API data yet to justify that. This is the
+        # evidence that would.
+        story_cast = cast_service.from_json(story_cast_json)
+        gaps = cast_service.coverage_gaps(draft.paragraphs, story_cast)
+        if gaps:
+            # COUNTS, never names or the band. Log extras are copied verbatim
+            # by the JSON formatter and ride along as Sentry breadcrumbs, which
+            # send_default_pii=False does not filter — that would put children's
+            # first names and reading level into a third-party processor the
+            # privacy page does not even list. The counts carry all the evidence
+            # needed to decide whether repair is worth building.
+            logger.warning(
+                "Story sidelined a named child",
+                extra={
+                    "story_id": story_id,
+                    "sidelined_count": len(gaps),
+                    "cast_size": len(cast_service.children(story_cast)),
+                },
+            )
 
         total = len(draft.paragraphs)
         await _update_job(job_id, stage="illustrating", progress_current=0, progress_total=total)
@@ -229,17 +257,22 @@ async def run_generation(story_id: str) -> None:
         logger.info("Story %s generated (%d pages)", story_id, total)
 
     except Exception as e:
+        coded = isinstance(e, GenerationError)
         user_message = (
-            e.user_message
-            if isinstance(e, GenerationError)
-            else "Something went wrong while creating your story. Please try again."
+            e.user_message if coded else "Something went wrong while creating your story. Please try again."
         )
+        # Prose AND code, always. This runs in the worker, a container deployed
+        # separately from the API, so a row can be written by a new worker and
+        # read by an old client or the reverse. The prose is the compatibility
+        # layer and stays until the code path has survived a full deploy cycle.
+        error_code = e.code if coded else GENERATION_FAILED
         logger.error("Generation failed for story %s: %s", story_id, e, exc_info=True)
         async with factory() as session:
             story = await session.get(Story, story_id)
             if story is not None:
                 story.status = "failed"
                 story.error = user_message
+                story.error_code = error_code
             # The story never reached the reader, so refund the ledger entry:
             # the user must not lose an allowance to our failure.
             await session.execute(
@@ -248,4 +281,4 @@ async def run_generation(story_id: str) -> None:
                 .values(refunded=True, refund_reason="generation_failed")
             )
             await session.commit()
-        await _update_job(job_id, status="failed", stage="failed", error=user_message)
+        await _update_job(job_id, status="failed", stage="failed", error=user_message, error_code=error_code)

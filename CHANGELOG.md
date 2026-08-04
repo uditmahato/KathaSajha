@@ -1,5 +1,43 @@
 # Changelog
 
+## Iteration 6: child profiles
+
+### Added
+- **Saved children and companion characters**: a first name and an OPTIONAL age
+  RANGE per child (never a birthday, never an exact age - the band is all the
+  system consumes), plus pets and characters. Licensed cartoon characters are
+  deliberately out: generating them is infringement, and for a business seeking
+  acquisition that is a liability rather than a feature.
+- **Age changes the output, not just the form.** Five bands set paragraph count,
+  words per paragraph, a sentence-length ceiling, and how much jeopardy is
+  allowed. With siblings the YOUNGEST sets the reading level, because one book is
+  read to all of them; each child's ROLE complexity still follows their own age.
+- **Ensemble stories**: up to three children star, with a prompt contract that
+  forbids the failure a parent notices instantly - one child gets the adventure
+  while the others are scenery. `cast.coverage_gaps()` measures this from the
+  finished TEXT, never from the model's own account of itself, and logs it;
+  repair calls are deferred until real-API data justifies the cost.
+- Stories keep a frozen cast SNAPSHOT rather than a foreign key, so renaming or
+  deleting a profile never rewrites a book already on the shelf.
+
+### Fixed / hardened after adversarial review
+- **Prompt injection**: parent-supplied names and descriptions were emitted in
+  the RULES block, where a name reads as an instruction, and the input delimiter
+  was forgeable by typing it into the story idea. Rules now reference heroes
+  positionally, every parent string lives inside a block whose markers carry a
+  per-request nonce, and companion descriptions are allowlisted.
+- **Children's names and reading band were being logged**, which the JSON
+  formatter copies verbatim and Sentry attaches as breadcrumbs - a third-party
+  processor the privacy page does not list. Counts only now.
+- The typed hero field is sanitised rather than rejected: it previously accepted
+  anything, and a new rule must not block a parent mid-flow.
+- NFC normalisation could lengthen a name past the column width after
+  `max_length` had already run.
+- Coverage credited "Ana" for every "Anaya", and was case-sensitive.
+- Duplicate `child_ids` produced "2 heroes of equal importance" naming one child.
+- A stale SQLite dev database now fails loudly at boot instead of 500ing
+  mid-request; the check runs BEFORE `create_all` so its advice stays valid.
+
 ## Iteration 5: release gates
 
 ### Added

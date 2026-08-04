@@ -3,11 +3,12 @@
 import logging
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Request, status
 from sqlalchemy import select, update
 
 from ..config import get_settings
 from ..deps import CurrentUser, DbSession
+from ..errors import CodedHTTPException
 from ..models import BillingEventRecord, PasswordResetToken, Story, User
 from ..plans import ACTIVE_SUBSCRIPTION_STATUSES
 from ..quota import (
@@ -66,8 +67,10 @@ async def register(body: RegisterRequest, db: DbSession, request: Request):
     email = body.email.lower().strip()
     existing = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
     if existing is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="An account with this email already exists"
+        raise CodedHTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            code="auth.email_taken",
+            detail="An account with this email already exists",
         )
     user = User(
         email=email, password_hash=hash_password(body.password), display_name=body.display_name.strip()
@@ -85,7 +88,11 @@ async def login(body: LoginRequest, db: DbSession, request: Request):
     await enforce_auth_attempt_limit("login-email", email)
     user = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
     if user is None or not verify_password(body.password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+        raise CodedHTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            code="auth.bad_credentials",
+            detail="Invalid email or password",
+        )
     return TokenResponse(access_token=create_access_token(user.id, user.token_version))
 
 
@@ -150,15 +157,18 @@ async def reset_password(body: ResetPasswordRequest, db: DbSession, request: Req
     if expires is not None and expires.tzinfo is None:  # SQLite returns naive datetimes
         expires = expires.replace(tzinfo=UTC)
     if record is None or record.used_at is not None or expires is None or expires < now:
-        raise HTTPException(
+        raise CodedHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
+            code="auth.reset_invalid",
             detail="This reset link is invalid or has expired. Please request a new one.",
         )
 
     user = await db.get(User, record.user_id)
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="This reset link is no longer valid."
+        raise CodedHTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="auth.reset_used",
+            detail="This reset link is no longer valid.",
         )
 
     user.password_hash = hash_password(body.password)
@@ -176,7 +186,11 @@ async def reset_password(body: ResetPasswordRequest, db: DbSession, request: Req
 @router.post("/change-password", response_model=ChangePasswordResponse)
 async def change_password(body: ChangePasswordRequest, user: CurrentUser, db: DbSession):
     if not verify_password(body.current_password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password is incorrect")
+        raise CodedHTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            code="auth.current_password_wrong",
+            detail="Current password is incorrect",
+        )
     user.password_hash = hash_password(body.new_password)
     user.token_version += 1
     await db.commit()
@@ -205,7 +219,11 @@ async def delete_account(body: DeleteAccountRequest, user: CurrentUser, db: DbSe
     """
     await enforce_auth_attempt_limit("delete-account", user.id)
     if not verify_password(body.password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Password is incorrect")
+        raise CodedHTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            code="auth.password_wrong",
+            detail="Password is incorrect",
+        )
 
     settings = get_settings()
     # Only a subscription that is actually live: a long-cancelled one would

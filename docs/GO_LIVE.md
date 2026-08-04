@@ -29,6 +29,21 @@ next to it; the app itself enforces several of these by refusing to boot.
       the "draft pending review" notices
 - [ ] Confirm the deletion flow satisfies your counsel (in-app: footer ->
       Delete my account)
+- [ ] Decide whether `/privacy` and `/terms` must exist in Nepali. Today they do
+      not, and the app says so: the Nepali consent sentence states both documents
+      are English-only, the footer links read "(अङ्ग्रेजीमा)", and both pages show
+      a Nepali banner declaring English as the governing version. That is the
+      honest interim answer, not necessarily a sufficient one for a children's
+      product marketed to Nepali speakers — your counsel decides
+
+## Nepali interface
+
+- [ ] Have `frontend/i18n/ne.js` reviewed by a native Nepali speaker, in the
+      running app rather than in a spreadsheet. It was written by an AI and is
+      marked `"review_status": "pending_native_speaker_review"`. Clunky Nepali on
+      a product whose differentiator is Nepali is worse than confident English
+- [ ] Review the legal banner text (`legal.english_only.*`) with counsel as well
+      as a speaker — it makes a legal claim about which version governs
 
 ## Billing (when ready to charge)
 

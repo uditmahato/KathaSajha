@@ -13,10 +13,26 @@
             <a class="brand" href="/">
                 <h1>KathaSajha <span class="brand-nepali">कथा साझा</span></h1>
             </a>
+            <div class="locale-switch">
+                <label class="sr-only" for="localeSelect" data-i18n="nav.language">Language</label>
+                <select id="localeSelect" class="locale-select">
+                    <option value="en">English</option>
+                    <option value="ne" lang="ne">नेपाली</option>
+                </select>
+            </div>
         </div>
     </header>
     <main class="app-main legal-page">
         <h1>Privacy Policy</h1>
+        <!-- Shown only to a Nepali reader. This document is English-only pending
+             legal review, and consenting to a policy you cannot read is not
+             consent; saying so plainly is the honest interim answer. -->
+        <div class="notice legal-notice hidden" lang="ne" data-i18n-locale-only="ne">
+            <strong data-i18n="legal.english_only.title">This page is available in English only</strong>
+            <p data-i18n="legal.english_only.body">This legal document is currently available in
+                English only, and the English version is the legally binding one. A Nepali
+                translation is being prepared. If anything here is unclear, please ask us.</p>
+        </div>
         <p class="muted small">
             Last updated: August 2026 · <strong>Draft pending review by qualified legal
             counsel.</strong> This page describes what the service actually does today; it is
@@ -35,6 +51,9 @@
         <ul>
             <li><strong>Account:</strong> your email address, a password (stored only as a
                 bcrypt hash, never as text), and an optional display name.</li>
+            <li><strong>Saved children and characters:</strong> if you choose to save them, each
+                child's first name and an optional age range (never a birthday or exact age), plus
+                any pets or characters you add.</li>
             <li><strong>Stories:</strong> the ideas you type, the stories and illustrations
                 generated from them, and — optionally — a child's first name if you choose to
                 make them the hero. We ask you not to include surnames, birthdays, addresses,
@@ -49,19 +68,28 @@
 
         <h2>Children's information</h2>
         <p>
-            The only child-related information we handle is what a parent chooses to type: a
-            first name and a story idea. It is provided by the parent, used solely to
-            personalise that family's stories, never used for advertising, and deleted with the
-            account. We do not knowingly collect personal information from children themselves.
-            If you believe a child has submitted information to us directly, contact us and we
-            will delete it.
+            The child-related information we handle is what a parent chooses to enter: a first
+            name, a story idea, and — optionally — an age <em>range</em> such as "6-7 years". We
+            never ask for or store a date of birth or an exact age. The age range is used for one
+            purpose only: choosing how the story is written (sentence length, story length, and
+            what may happen in it). It is never used for advertising, profiling, or audience
+            segmentation, and it is never shown to anyone or included in a shared story or PDF.
+            All of it is provided by the parent, used solely to personalise that family's
+            stories, and deleted with the account. We do not knowingly collect personal
+            information from children themselves. If you believe a child has submitted
+            information to us directly, contact us and we will delete it.
+        </p>
+        <p>
+            These details describe the <em>subject</em> of a story, not the account holder.
+            Accounts remain adults-only.
         </p>
 
         <h2>Who processes data on our behalf</h2>
         <ul>
-            <li><strong>Google (Gemini API):</strong> your story idea and the child's first
-                name, if provided, are sent to Google's generative AI service to write and
-                illustrate the story.</li>
+            <li><strong>Google (Gemini API):</strong> your story idea, the first names of the
+                children starring in it, the names and descriptions of any pets or characters you
+                add, and an age <em>range</em> — never an exact age — are sent to Google's
+                generative AI service to write and illustrate the story.</li>
             <li><strong>Stripe:</strong> subscription billing.</li>
             <li><strong>Our hosting provider:</strong> runs the servers and database.</li>
         </ul>
@@ -91,7 +119,10 @@
             Use <strong>Delete my account</strong> in the site footer while logged in. It
             removes your account, every story and illustration, and any child names from the
             live service immediately, and asks our payment processor to cancel any active
-            subscription. Copies may persist in encrypted database backups until those
+            subscription, and removes every saved child and character. Removing a single saved
+            child does not change stories already made: those books keep the name printed on
+            their pages, because they were written with it. Copies may persist in encrypted
+            database backups until those
             backups rotate out (currently within 30 days). Anonymous generation records —
             counts and timestamps with no link to you — are kept as financial records. You
             can also request deletion by email.
@@ -113,5 +144,6 @@
     <footer class="site-footer">
         <p class="muted small">KathaSajha · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>
     </footer>
+    <script src="/assets/i18n.js"></script>
 </body>
 </html>

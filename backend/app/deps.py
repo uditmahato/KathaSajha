@@ -2,11 +2,12 @@
 
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import get_db
+from .errors import CodedHTTPException
 from .models import User
 from .security import decode_access_token
 
@@ -20,20 +21,33 @@ async def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
 ) -> User:
     if credentials is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        raise CodedHTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            code="auth.not_authenticated",
+            detail="Not authenticated",
+        )
     payload = decode_access_token(credentials.credentials)
     user_id = payload.get("sub") if payload else None
     if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+        raise CodedHTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            code="auth.token_invalid",
+            detail="Invalid or expired token",
+        )
     user = await db.get(User, user_id)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User no longer exists")
+        raise CodedHTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            code="auth.user_gone",
+            detail="User no longer exists",
+        )
     # A password change bumps token_version, retiring every token issued before
     # it. Tokens minted before this field existed carry no `ver` and are retired
     # too, which is the safe direction to fail.
     if payload.get("ver") != user.token_version:
-        raise HTTPException(
+        raise CodedHTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
+            code="auth.session_ended",
             detail="This session has ended. Please log in again.",
         )
     return user

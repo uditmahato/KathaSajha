@@ -20,22 +20,32 @@
     <link rel="stylesheet" href="/assets/styles.css">
 </head>
 <body>
-    <a href="#app" class="skip-link">Skip to main content</a>
+    <a href="#app" class="skip-link" data-i18n="a11y.skip">Skip to main content</a>
     <header class="site-header">
         <div class="header-inner">
             <a class="brand" href="/" data-nav="home">
                 <h1>KathaSajha <span class="brand-nepali">कथा साझा</span></h1>
-                <p class="tagline">Create magical stories with AI</p>
+                <p class="tagline" data-i18n="brand.tagline">Create magical stories with AI</p>
             </a>
             <nav id="userNav" class="user-nav hidden">
-                <span id="usageBadge" class="usage-badge" title="Stories remaining today"></span>
-                <button id="navLibrary" class="btn btn-ghost">My Stories</button>
-                <button id="navLogout" class="btn btn-ghost">Log out</button>
+                <span id="usageBadge" class="usage-badge" title="Stories remaining today"
+                      data-i18n-attr="title:nav.usage_title"></span>
+                <button id="navLibrary" class="btn btn-ghost" data-i18n="nav.library">My Stories</button>
+                <button id="navLogout" class="btn btn-ghost" data-i18n="nav.logout">Log out</button>
             </nav>
             <nav id="guestNav" class="user-nav hidden">
-                <button id="navLogin" class="btn btn-ghost">Log in</button>
-                <button id="navSignup" class="btn btn-gold">Get started free</button>
+                <button id="navLogin" class="btn btn-ghost" data-i18n="nav.login">Log in</button>
+                <button id="navSignup" class="btn btn-gold" data-i18n="nav.signup">Get started free</button>
             </nav>
+            <!-- Visible logged out: a parent who cannot read the current
+                 interface has to be able to find this without an account. -->
+            <div class="locale-switch">
+                <label class="sr-only" for="localeSelect" data-i18n="nav.language">Language</label>
+                <select id="localeSelect" class="locale-select">
+                    <option value="en">English</option>
+                    <option value="ne" lang="ne">नेपाली</option>
+                </select>
+            </div>
         </div>
     </header>
 
@@ -43,22 +53,22 @@
         <!-- Landing view (logged-out visitors) -->
         <section id="landingView" class="view hidden">
             <div class="hero">
-                <div class="hero-badge">✨ AI storyteller for kids aged 4-12</div>
-                <h2 class="hero-title">Magical, illustrated stories for your child, written in seconds</h2>
-                <p class="hero-sub">
+                <div class="hero-badge" data-i18n="landing.badge">✨ AI storyteller for kids aged 4-12</div>
+                <h2 class="hero-title" data-i18n="landing.hero.title">Magical, illustrated stories for your child, written in seconds</h2>
+                <p class="hero-sub" data-i18n="landing.hero.sub" data-i18n-slots="nepali">
                     Type any story idea and KathaSajha writes a warm, age-appropriate tale with a
-                    colorful illustration on every page. In English or in <strong>नेपाली</strong>,
+                    colorful illustration on every page. In English or in <strong data-i18n-slot="nepali">नेपाली</strong>,
                     starring your own child as the hero.
                 </p>
                 <div class="hero-ctas">
-                    <button id="heroSignup" class="btn btn-primary btn-lg">Create your first story for free</button>
-                    <a href="#howItWorks" class="btn btn-secondary btn-lg">See how it works</a>
+                    <button id="heroSignup" class="btn btn-primary btn-lg" data-i18n="landing.cta.primary">Create your first story for free</button>
+                    <a href="#howItWorks" class="btn btn-secondary btn-lg" data-i18n="landing.cta.secondary">See how it works</a>
                 </div>
-                <p class="hero-note">Free plan: 10 stories a month · No credit card needed</p>
+                <p class="hero-note" data-i18n="landing.hero.note">Free plan: 10 stories a month · No credit card needed</p>
                 <div class="hero-book">
                     <div class="hero-page">
                         <span class="hero-emoji">🦁</span>
-                        <p>"Leo the Lion and Lily the Lost Girl"</p>
+                        <p data-i18n="landing.sample.1">"Leo the Lion and Lily the Lost Girl"</p>
                     </div>
                     <div class="hero-page">
                         <span class="hero-emoji" aria-hidden="true">🏔️</span>
@@ -66,56 +76,56 @@
                     </div>
                     <div class="hero-page">
                         <span class="hero-emoji">🐉</span>
-                        <p>"The Dragon Who Was Afraid of Rain"</p>
+                        <p data-i18n="landing.sample.3">"The Dragon Who Was Afraid of Rain"</p>
                     </div>
                 </div>
             </div>
 
             <div id="howItWorks" class="landing-section">
-                <h2 class="section-heading">How it works</h2>
+                <h2 class="section-heading" data-i18n="landing.how.title">How it works</h2>
                 <div class="steps">
                     <div class="step">
                         <div class="step-num">1</div>
-                        <h3>Share an idea</h3>
-                        <p>A sentence is enough: "a yak who wants to see Kathmandu". Add your child's name to make them the hero.</p>
+                        <h3 data-i18n="landing.step.1.title">Share an idea</h3>
+                        <p data-i18n="landing.step.1.body">A sentence is enough: "a yak who wants to see Kathmandu". Add your child's name to make them the hero.</p>
                     </div>
                     <div class="step">
                         <div class="step-num">2</div>
-                        <h3>Watch it come alive</h3>
-                        <p>Our AI writes a 3-5 page story with a gentle lesson, and paints a colorful illustration for every page.</p>
+                        <h3 data-i18n="landing.step.2.title">Watch it come alive</h3>
+                        <p data-i18n="landing.step.2.body">Our AI writes a 3-5 page story with a gentle lesson, and paints a colorful illustration for every page.</p>
                     </div>
                     <div class="step">
                         <div class="step-num">3</div>
-                        <h3>Read, share, keep</h3>
-                        <p>Read together on any device, share a link with family, or download a print-ready PDF storybook.</p>
+                        <h3 data-i18n="landing.step.3.title">Read, share, keep</h3>
+                        <p data-i18n="landing.step.3.body">Read together on any device, share a link with family, or download a print-ready PDF storybook.</p>
                     </div>
                 </div>
             </div>
 
             <div class="landing-section">
-                <h2 class="section-heading">Why families love KathaSajha</h2>
+                <h2 class="section-heading" data-i18n="landing.why.title">Why families love KathaSajha</h2>
                 <div class="features">
-                    <div class="feature"><span class="feature-icon">🎨</span><h3>Illustrated pages</h3><p>Every page gets its own storybook illustration, matched to the scene.</p></div>
-                    <div class="feature"><span class="feature-icon">🇳🇵</span><h3>नेपाली + English</h3><p>Stories in Nepali or English, keeping your language alive for the next generation.</p></div>
-                    <div class="feature"><span class="feature-icon">🦸</span><h3>Your child, the hero</h3><p>Add a name and the story is about them: their courage, their adventure.</p></div>
-                    <div class="feature"><span class="feature-icon">📄</span><h3>PDF storybooks</h3><p>One click turns any story into a beautiful, letter-sized PDF with a cover page.</p></div>
-                    <div class="feature"><span class="feature-icon">🔗</span><h3>Share with family</h3><p>Send a private link: grandparents can read it anywhere, no account needed.</p></div>
-                    <div class="feature"><span class="feature-icon">🛡️</span><h3>Safe for kids</h3><p>Every story follows strict child-safety rules: kind, positive, age-appropriate.</p></div>
+                    <div class="feature"><span class="feature-icon">🎨</span><h3 data-i18n="landing.feature.1.title">Illustrated pages</h3><p data-i18n="landing.feature.1.body">Every page gets its own storybook illustration, matched to the scene.</p></div>
+                    <div class="feature"><span class="feature-icon">🇳🇵</span><h3>नेपाली + English</h3><p data-i18n="landing.feature.2.body">Stories in Nepali or English, keeping your language alive for the next generation.</p></div>
+                    <div class="feature"><span class="feature-icon">🦸</span><h3 data-i18n="landing.feature.3.title">Your child, the hero</h3><p data-i18n="landing.feature.3.body">Add a name and the story is about them: their courage, their adventure.</p></div>
+                    <div class="feature"><span class="feature-icon">📄</span><h3 data-i18n="landing.feature.4.title">PDF storybooks</h3><p data-i18n="landing.feature.4.body">One click turns any story into a beautiful, letter-sized PDF with a cover page.</p></div>
+                    <div class="feature"><span class="feature-icon">🔗</span><h3 data-i18n="landing.feature.5.title">Share with family</h3><p data-i18n="landing.feature.5.body">Send a private link: grandparents can read it anywhere, no account needed.</p></div>
+                    <div class="feature"><span class="feature-icon">🛡️</span><h3 data-i18n="landing.feature.6.title">Safe for kids</h3><p data-i18n="landing.feature.6.body">Every story follows strict child-safety rules: kind, positive, age-appropriate.</p></div>
                 </div>
             </div>
 
             <div id="pricing" class="landing-section">
-                <h2 class="section-heading">Simple pricing</h2>
+                <h2 class="section-heading" data-i18n="landing.pricing.title">Simple pricing</h2>
                 <div id="landingPlans" class="plans-grid"></div>
-                <p class="muted small pricing-note">
+                <p class="muted small pricing-note" data-i18n="landing.pricing.note">
                     Start free, no card needed. Plus is opening soon and early members get first access.
                 </p>
             </div>
 
             <div class="landing-section landing-cta-box">
-                <h2 class="section-heading">Tonight's bedtime story is one idea away</h2>
-                <p class="muted">Join free and create 10 stories a month. Upgrade anytime as your library grows.</p>
-                <button id="footerSignup" class="btn btn-primary btn-lg">Start creating for free</button>
+                <h2 class="section-heading" data-i18n="landing.final.title">Tonight's bedtime story is one idea away</h2>
+                <p class="muted" data-i18n="landing.final.body">Join free and create 10 stories a month. Upgrade anytime as your library grows.</p>
+                <button id="footerSignup" class="btn btn-primary btn-lg" data-i18n="landing.final.cta">Start creating for free</button>
             </div>
         </section>
 
@@ -123,29 +133,34 @@
         <section id="authView" class="view hidden">
             <div class="card auth-card">
                 <div class="tabs">
-                    <button id="tabLogin" class="tab active">Log in</button>
-                    <button id="tabRegister" class="tab">Sign up</button>
+                    <button id="tabLogin" class="tab active" data-i18n="auth.tab.login">Log in</button>
+                    <button id="tabRegister" class="tab" data-i18n="auth.tab.register">Sign up</button>
                 </div>
                 <form id="authForm">
                     <div id="nameField" class="field hidden">
-                        <label for="authName">Your name</label>
+                        <label for="authName" data-i18n="auth.name.label">Your name</label>
                         <input type="text" id="authName" maxlength="100" placeholder="Udit" autocomplete="name">
                     </div>
                     <div class="field">
-                        <label for="authEmail">Email</label>
+                        <label for="authEmail" data-i18n="auth.email.label">Email</label>
                         <input type="email" id="authEmail" required placeholder="you@example.com" autocomplete="email">
                     </div>
                     <div class="field">
-                        <label for="authPassword">Password</label>
-                        <input type="password" id="authPassword" required minlength="8" placeholder="At least 8 characters" autocomplete="current-password">
+                        <label for="authPassword" data-i18n="auth.password.label">Password</label>
+                        <input type="password" id="authPassword" required minlength="8" placeholder="At least 8 characters"
+                               autocomplete="current-password" data-i18n-attr="placeholder:auth.password.placeholder">
                     </div>
                     <p id="authError" class="error-text hidden" role="alert"></p>
-                    <button type="submit" id="authSubmit" class="btn btn-primary btn-block">Log in</button>
-                    <p class="muted small consent-note">By creating an account you agree to the
-                        <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>.</p>
+                    <button type="submit" id="authSubmit" class="btn btn-primary btn-block" data-i18n="auth.submit.login">Log in</button>
+                    <!-- Slots, not textContent: a translation that dropped these two
+                         links would ship an account-creation flow with no route to
+                         the Terms it claims consent to. The Nepali sentence also
+                         states that both documents are in English, because they are. -->
+                    <p class="muted small consent-note" data-i18n="auth.consent" data-i18n-slots="terms,privacy">By creating an account you agree to the
+                        <a href="/terms" data-i18n-slot="terms" data-i18n="auth.consent.terms">Terms</a> and <a href="/privacy" data-i18n-slot="privacy" data-i18n="auth.consent.privacy">Privacy Policy</a>.</p>
                 </form>
                 <p class="auth-alt">
-                    <button type="button" id="forgotLink" class="link-btn">Forgot your password?</button>
+                    <button type="button" id="forgotLink" class="link-btn" data-i18n="auth.forgot">Forgot your password?</button>
                 </p>
             </div>
         </section>
@@ -153,32 +168,33 @@
         <!-- Forgot password -->
         <section id="forgotView" class="view hidden">
             <div class="card auth-card">
-                <h2>Reset your password</h2>
-                <p class="muted">Enter the email you signed up with and we will send you a link to choose a new password.</p>
+                <h2 data-i18n="forgot.title">Reset your password</h2>
+                <p class="muted" data-i18n="forgot.body">Enter the email you signed up with and we will send you a link to choose a new password.</p>
                 <form id="forgotForm">
                     <div class="field">
-                        <label for="forgotEmail">Email</label>
+                        <label for="forgotEmail" data-i18n="forgot.email.label">Email</label>
                         <input type="email" id="forgotEmail" required placeholder="you@example.com" autocomplete="email">
                     </div>
                     <p id="forgotMessage" class="notice hidden" role="status"></p>
                     <p id="forgotError" class="error-text hidden" role="alert"></p>
-                    <button type="submit" id="forgotSubmit" class="btn btn-primary btn-block">Send reset link</button>
+                    <button type="submit" id="forgotSubmit" class="btn btn-primary btn-block" data-i18n="forgot.submit">Send reset link</button>
                 </form>
-                <p class="auth-alt"><button type="button" id="backToLogin" class="link-btn">Back to log in</button></p>
+                <p class="auth-alt"><button type="button" id="backToLogin" class="link-btn" data-i18n="forgot.back">Back to log in</button></p>
             </div>
         </section>
 
         <!-- Choose a new password (from the emailed link) -->
         <section id="resetView" class="view hidden">
             <div class="card auth-card">
-                <h2>Choose a new password</h2>
+                <h2 data-i18n="reset.title">Choose a new password</h2>
                 <form id="resetForm">
                     <div class="field">
-                        <label for="resetPassword">New password</label>
-                        <input type="password" id="resetPassword" required minlength="8" placeholder="At least 8 characters" autocomplete="new-password">
+                        <label for="resetPassword" data-i18n="reset.password.label">New password</label>
+                        <input type="password" id="resetPassword" required minlength="8" placeholder="At least 8 characters"
+                               autocomplete="new-password" data-i18n-attr="placeholder:auth.password.placeholder">
                     </div>
                     <p id="resetError" class="error-text hidden" role="alert"></p>
-                    <button type="submit" id="resetSubmit" class="btn btn-primary btn-block">Save new password</button>
+                    <button type="submit" id="resetSubmit" class="btn btn-primary btn-block" data-i18n="reset.submit">Save new password</button>
                 </form>
             </div>
         </section>
@@ -186,20 +202,33 @@
         <!-- Create view -->
         <section id="createView" class="view hidden">
             <div class="card">
-                <h2>Create Your Story</h2>
-                <p class="muted">Enter a story idea below. Our AI will craft a wonderful, illustrated tale.</p>
+                <h2 data-i18n="create.title">Create Your Story</h2>
+                <p class="muted" data-i18n="create.body">Enter a story idea below. Our AI will craft a wonderful, illustrated tale.</p>
                 <div class="field">
-                    <label for="storyPrompt">Your story idea</label>
-                    <textarea id="storyPrompt" rows="3" maxlength="500" placeholder="Example: Leo the Lion and Lily the Lost Girl"></textarea>
+                    <label for="storyPrompt" data-i18n="create.prompt.label">Your story idea</label>
+                    <textarea id="storyPrompt" rows="3" maxlength="500" placeholder="Example: Leo the Lion and Lily the Lost Girl"
+                              data-i18n-attr="placeholder:create.prompt.placeholder"></textarea>
                     <span id="promptCount" class="char-count">0 / 500</span>
+                </div>
+                <!-- Saved children and characters. Hidden until at least one
+                     exists, so a parent with no profiles sees exactly the form
+                     they saw before this feature. -->
+                <div id="castPicker" class="field hidden">
+                    <span class="field-label" data-i18n="create.cast.label">Who's in this story?</span>
+                    <div id="castOptions" class="cast-options"></div>
+                    <p id="castHint" class="muted small"></p>
                 </div>
                 <div class="field-row">
                     <div class="field">
-                        <label for="heroName">Hero's name <span class="muted">(optional)</span></label>
-                        <input type="text" id="heroName" maxlength="60" placeholder="Your child's name">
+                        <label for="heroName" data-i18n="create.hero.label" data-i18n-slots="optional">Hero's name <span class="muted" data-i18n-slot="optional" data-i18n="common.optional">(optional)</span></label>
+                        <input type="text" id="heroName" maxlength="60" placeholder="Your child's name"
+                               data-i18n-attr="placeholder:create.hero.placeholder">
                     </div>
                     <div class="field">
-                        <label for="storyLanguage">Language</label>
+                        <!-- The language the STORY is written in. Independent of the
+                             interface locale: a Nepali-reading parent may well want
+                             an English story, and the reverse. -->
+                        <label for="storyLanguage" data-i18n="create.language.label">Story language</label>
                         <select id="storyLanguage">
                             <option value="en">English</option>
                             <option value="ne">नेपाली (Nepali)</option>
@@ -207,14 +236,14 @@
                     </div>
                 </div>
                 <div class="button-row">
-                    <button id="generateBtn" class="btn btn-primary">✨ Generate Story</button>
-                    <button id="sampleBtn" class="btn btn-secondary">💡 Show Example</button>
+                    <button id="generateBtn" class="btn btn-primary" data-i18n="create.generate">✨ Generate Story</button>
+                    <button id="sampleBtn" class="btn btn-secondary" data-i18n="create.sample">💡 Show Example</button>
                 </div>
                 <p id="createError" class="error-text hidden"></p>
 
                 <div id="progressPanel" class="progress-panel hidden" role="status" aria-live="polite">
                     <div class="loading-spinner" aria-hidden="true"></div>
-                    <p id="progressStage" class="progress-stage">Queued...</p>
+                    <p id="progressStage" class="progress-stage" data-i18n="stage.queued">Waiting in the queue…</p>
                     <div class="progress-track" role="progressbar" aria-labelledby="progressStage"
                          id="progressTrack" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
                         <div id="progressBar" class="progress-bar"></div>
@@ -224,20 +253,20 @@
             </div>
 
             <div id="librarySection" class="library-section">
-                <h2 class="section-title">My Stories</h2>
+                <h2 class="section-title" data-i18n="library.title">My Stories</h2>
                 <div id="libraryGrid" class="library-grid"></div>
-                <p id="libraryEmpty" class="muted hidden">No stories yet. Create your first one above!</p>
+                <p id="libraryEmpty" class="muted hidden" data-i18n="library.empty">No stories yet. Create your first one above!</p>
             </div>
         </section>
 
         <!-- Story reader view (own + shared) -->
         <section id="storyView" class="view hidden">
             <div class="reader-toolbar">
-                <button id="backBtn" class="btn btn-ghost">← Back</button>
+                <button id="backBtn" class="btn btn-ghost" data-i18n="reader.back">← Back</button>
                 <div class="reader-actions">
-                    <button id="shareBtn" class="btn btn-secondary hidden">🔗 Share</button>
-                    <button id="pdfBtn" class="btn btn-secondary">📄 Save PDF</button>
-                    <button id="deleteBtn" class="btn btn-danger hidden">🗑 Delete</button>
+                    <button id="shareBtn" class="btn btn-secondary hidden" data-i18n="reader.share">🔗 Share</button>
+                    <button id="pdfBtn" class="btn btn-secondary" data-i18n="reader.pdf">📄 Save PDF</button>
+                    <button id="deleteBtn" class="btn btn-danger hidden" data-i18n="reader.delete">🗑 Delete</button>
                 </div>
             </div>
             <p id="shareInfo" class="share-info hidden"></p>
@@ -249,28 +278,64 @@
     </main>
 
     <footer class="site-footer">
-        <p>KathaSajha · AI-powered story generator · © 2025 KathaSajha</p>
+        <p data-i18n="footer.line">KathaSajha · AI-powered story generator · © 2025 KathaSajha</p>
         <p class="footer-links">
-            <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a><span id="deleteAccountWrap" class="hidden"> ·
-            <button id="deleteAccountLink" class="link-btn">Delete my account</button></span>
+            <span id="familyWrap" class="hidden"><button id="familyLink" class="link-btn" data-i18n="footer.family">My family</button> · </span>
+            <!-- These two labels say "(in English)" in Nepali: the documents are
+                 English-only pending legal review, and a link that hides that is
+                 worse than one that admits it. -->
+            <a href="/privacy" data-i18n="footer.privacy">Privacy</a> · <a href="/terms" data-i18n="footer.terms">Terms</a><span id="deleteAccountWrap" class="hidden"> ·
+            <button id="deleteAccountLink" class="link-btn" data-i18n="footer.delete_account">Delete my account</button></span>
         </p>
     </footer>
+
+    <!-- Saved children and characters -->
+    <div id="familyBackdrop" class="modal-backdrop hidden">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="familyTitle">
+            <h2 id="familyTitle" class="modal-title" data-i18n="family.title">My family</h2>
+            <p class="modal-body muted small" data-i18n="family.body">Saved so every story can star them. An age range is
+               optional — it only sets how the story is written, never anything else.</p>
+            <ul id="familyList" class="family-list"></ul>
+            <form id="familyForm" class="family-form">
+                <div class="field">
+                    <label for="familyName" data-i18n="family.name.label">First name</label>
+                    <input id="familyName" type="text" maxlength="60" required placeholder="Aarav">
+                </div>
+                <div class="field">
+                    <label for="familyBand" data-i18n="family.band.label" data-i18n-slots="optional">Age range <span class="muted" data-i18n-slot="optional" data-i18n="common.optional">(optional)</span></label>
+                    <select id="familyBand">
+                        <option value="" data-i18n="family.band.unset">Prefer not to say</option>
+                        <option value="toddler" data-i18n="family.band.toddler">2-3 years</option>
+                        <option value="preschool" data-i18n="family.band.preschool">4-5 years</option>
+                        <option value="early_reader" data-i18n="family.band.early_reader">6-7 years</option>
+                        <option value="middle_grade" data-i18n="family.band.middle_grade">8-10 years</option>
+                        <option value="preteen" data-i18n="family.band.preteen">11-12 years</option>
+                    </select>
+                </div>
+                <p id="familyError" class="error-text hidden" role="alert"></p>
+                <div class="modal-actions">
+                    <button type="button" id="familyClose" class="btn btn-secondary" data-i18n="family.done">Done</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="family.add">Add child</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Account deletion: password re-entry so a borrowed session cannot erase a library -->
     <div id="deleteBackdrop" class="modal-backdrop hidden">
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="deleteTitle" aria-describedby="deleteBody">
-            <h2 id="deleteTitle" class="modal-title">Delete your account?</h2>
-            <p id="deleteBody" class="modal-body">This permanently removes your account, every story,
+            <h2 id="deleteTitle" class="modal-title" data-i18n="delete_account.title">Delete your account?</h2>
+            <p id="deleteBody" class="modal-body" data-i18n="delete_account.body">This permanently removes your account, every story,
                and every illustration. There is no undo. Enter your password to confirm.</p>
             <form id="deleteForm">
                 <div class="field">
-                    <label for="deletePassword">Password</label>
+                    <label for="deletePassword" data-i18n="auth.password.label">Password</label>
                     <input id="deletePassword" type="password" autocomplete="current-password" required>
                 </div>
                 <p id="deleteError" class="error-text hidden" role="alert"></p>
                 <div class="modal-actions">
-                    <button type="button" id="deleteCancel" class="btn btn-secondary">Keep my account</button>
-                    <button type="submit" id="deleteConfirm" class="btn btn-danger">Delete everything</button>
+                    <button type="button" id="deleteCancel" class="btn btn-secondary" data-i18n="delete_account.cancel">Keep my account</button>
+                    <button type="submit" id="deleteConfirm" class="btn btn-danger" data-i18n="delete_account.confirm">Delete everything</button>
                 </div>
             </form>
         </div>
@@ -282,13 +347,13 @@
     <!-- Upgrade moment: shown when a parent hits the daily wall -->
     <div id="upgradeBackdrop" class="modal-backdrop hidden">
         <div class="modal upgrade-modal" role="dialog" aria-modal="true" aria-labelledby="upgradeTitle" aria-describedby="upgradeBody">
-            <h2 id="upgradeTitle" class="modal-title">That's today's stories finished</h2>
+            <h2 id="upgradeTitle" class="modal-title" data-i18n="upgrade.title">That's today's stories finished</h2>
             <p id="upgradeBody" class="modal-body"></p>
             <div id="upgradePlan" class="upgrade-plan"></div>
             <p id="upgradeResult" class="notice hidden" role="status"></p>
             <div class="modal-actions">
-                <button id="upgradeDismiss" class="btn btn-secondary">Maybe tomorrow</button>
-                <button id="upgradeInterest" class="btn btn-primary">Tell me when Plus opens</button>
+                <button id="upgradeDismiss" class="btn btn-secondary" data-i18n="upgrade.dismiss">Maybe tomorrow</button>
+                <button id="upgradeInterest" class="btn btn-primary" data-i18n="upgrade.interest">Tell me when Plus opens</button>
             </div>
         </div>
     </div>
@@ -296,15 +361,18 @@
     <!-- Confirmation dialog: replaces window.confirm -->
     <div id="confirmBackdrop" class="modal-backdrop hidden">
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmBody">
-            <h2 id="confirmTitle" class="modal-title">Are you sure?</h2>
+            <h2 id="confirmTitle" class="modal-title" data-i18n="confirm.default_title">Are you sure?</h2>
             <p id="confirmBody" class="modal-body"></p>
             <div class="modal-actions">
-                <button id="confirmCancel" class="btn btn-secondary">Cancel</button>
-                <button id="confirmOk" class="btn btn-danger">Delete</button>
+                <button id="confirmCancel" class="btn btn-secondary" data-i18n="confirm.cancel">Cancel</button>
+                <button id="confirmOk" class="btn btn-danger" data-i18n="confirm.ok_fallback">Delete</button>
             </div>
         </div>
     </div>
 
+    <!-- i18n first: it defines window.KS_I18N, which app.js uses on line 1 and
+         waits on (KS_I18N.ready) before revealing any view. -->
+    <script src="/assets/i18n.js"></script>
     <script src="/assets/app.js"></script>
 </body>
 </html>

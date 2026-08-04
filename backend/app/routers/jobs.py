@@ -3,11 +3,12 @@
 import logging
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, status
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..deps import CurrentUser, DbSession
+from ..errors import GENERATION_STALLED, CodedHTTPException
 from ..models import GenerationEvent, GenerationJob, Story
 from ..schemas import JobOut
 
@@ -35,10 +36,12 @@ async def fail_job_if_stale(db: AsyncSession, job: GenerationJob) -> bool:
     job.status = "failed"
     job.stage = "failed"
     job.error = "Generation timed out. Please try again."
+    job.error_code = GENERATION_STALLED
     story = await db.get(Story, job.story_id)
     if story is not None and story.status in ("pending", "generating"):
         story.status = "failed"
         story.error = job.error
+        story.error_code = job.error_code
     # Our failure, so the user keeps the allowance.
     await db.execute(
         update(GenerationEvent)
@@ -77,12 +80,12 @@ async def fail_stale_jobs_for_user(db: AsyncSession, user_id: str) -> None:
     await db.execute(
         update(GenerationJob)
         .where(GenerationJob.story_id.in_(stale_story_ids))
-        .values(status="failed", stage="failed", error=message)
+        .values(status="failed", stage="failed", error=message, error_code=GENERATION_STALLED)
     )
     await db.execute(
         update(Story)
         .where(Story.id.in_(stale_story_ids), Story.status.in_(["pending", "generating"]))
-        .values(status="failed", error=message)
+        .values(status="failed", error=message, error_code=GENERATION_STALLED)
     )
     # Our failure, so refund the ledger entries too.
     await db.execute(
@@ -116,6 +119,8 @@ async def get_job(job_id: str, user: CurrentUser, db: DbSession):
         )
     ).scalar_one_or_none()
     if job is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+        raise CodedHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, code="job.not_found", detail="Job not found"
+        )
     await fail_job_if_stale(db, job)
     return job
