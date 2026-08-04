@@ -145,6 +145,14 @@
         localStorage.removeItem(TOKEN_KEY);
         els.userNav.classList.add('hidden');
         document.getElementById('deleteAccountWrap').classList.add('hidden');
+        document.getElementById('familyWrap').classList.add('hidden');
+        // Clear the DOM too: on a shared computer the next person must not see
+        // the previous family's children's names still on screen.
+        savedChildren = [];
+        famEls.options.replaceChildren();
+        famEls.list.replaceChildren();
+        famEls.picker.classList.add('hidden');
+        famEls.backdrop.classList.add('hidden');
         stopPolling();
         if (libraryTimer) { clearTimeout(libraryTimer); libraryTimer = null; }
         // Clear everything the previous account left behind: on a shared
@@ -487,6 +495,9 @@
                     prompt: prompt,
                     language: els.storyLanguage.value,
                     hero_name: els.heroName.value.trim(),
+                    // Empty when no children are saved, so the request is
+                    // byte-identical to what it was before this feature.
+                    child_ids: selectedChildIds(),
                 }),
             });
             startPolling(resp.job_id, resp.story_id);
@@ -816,6 +827,118 @@
         }
     });
 
+    // ---------- Saved children and characters ----------
+    // The retention feature: once the app knows a family, no story starts from
+    // an empty box. A parent with no saved children sees the form unchanged.
+    const MAX_CHILDREN_PER_STORY = 3;
+    let savedChildren = [];
+    const famEls = {
+        wrap: $('familyWrap'), link: $('familyLink'), backdrop: $('familyBackdrop'),
+        list: $('familyList'), form: $('familyForm'), name: $('familyName'),
+        band: $('familyBand'), error: $('familyError'), close: $('familyClose'),
+        picker: $('castPicker'), options: $('castOptions'), hint: $('castHint'),
+    };
+
+    function selectedChildIds() {
+        return [...famEls.options.querySelectorAll('input:checked')].map((i) => i.value);
+    }
+
+    function renderCastPicker() {
+        // Keep whatever the parent had ticked: adding a sibling mid-flow must
+        // not silently clear the story they were about to make.
+        const keep = new Set(selectedChildIds());
+        famEls.picker.classList.toggle('hidden', savedChildren.length === 0);
+        famEls.options.replaceChildren();
+        savedChildren.forEach((child) => {
+            const label = document.createElement('label');
+            label.className = 'cast-option';
+            const box = document.createElement('input');
+            box.type = 'checkbox';
+            box.value = child.id;
+            box.checked = keep.has(child.id);
+            box.addEventListener('change', enforceCastCap);
+            const text = document.createElement('span');
+            text.textContent = child.name;
+            label.append(box, text);
+            famEls.options.appendChild(label);
+        });
+        enforceCastCap();
+    }
+
+    function enforceCastCap() {
+        // A story with more than three named children becomes a roll call, and
+        // someone always ends up as scenery. Say why rather than just disabling.
+        const chosen = selectedChildIds().length;
+        famEls.options.querySelectorAll('input').forEach((box) => {
+            box.disabled = !box.checked && chosen >= MAX_CHILDREN_PER_STORY;
+        });
+        famEls.hint.textContent = chosen >= MAX_CHILDREN_PER_STORY
+            ? 'Stories work best with up to ' + MAX_CHILDREN_PER_STORY + ' heroes — pick who is in this one.'
+            : '';
+    }
+
+    function renderFamilyList() {
+        famEls.list.replaceChildren();
+        savedChildren.forEach((child) => {
+            const li = document.createElement('li');
+            const name = document.createElement('span');
+            name.textContent = child.name;
+            const remove = document.createElement('button');
+            remove.className = 'link-btn';
+            remove.textContent = 'Remove';
+            remove.addEventListener('click', async () => {
+                try {
+                    await api('/api/profiles/children/' + child.id, { method: 'DELETE' });
+                    await loadFamily();
+                    // Stories already made keep their names: they were snapshotted.
+                    toast(child.name + ' removed. Stories already made are unchanged.');
+                } catch (err) { toast(err.message, 'error'); }
+            });
+            li.append(name, remove);
+            famEls.list.appendChild(li);
+        });
+        if (!savedChildren.length) {
+            const empty = document.createElement('li');
+            empty.className = 'muted small';
+            empty.textContent = 'No one saved yet.';
+            famEls.list.appendChild(empty);
+        }
+    }
+
+    async function loadFamily() {
+        try {
+            savedChildren = await api('/api/profiles/children');
+        } catch (_) {
+            savedChildren = [];
+        }
+        renderFamilyList();
+        renderCastPicker();
+    }
+
+    famEls.link.addEventListener('click', () => {
+        famEls.backdrop.classList.remove('hidden');
+        famEls.name.focus();
+    });
+    famEls.close.addEventListener('click', () => famEls.backdrop.classList.add('hidden'));
+    famEls.backdrop.addEventListener('mousedown', (e) => {
+        if (e.target === famEls.backdrop) famEls.backdrop.classList.add('hidden');
+    });
+    famEls.form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        setError(famEls.error, '');
+        try {
+            await api('/api/profiles/children', {
+                method: 'POST',
+                body: JSON.stringify({ name: famEls.name.value, age_band: famEls.band.value }),
+            });
+            famEls.name.value = '';
+            famEls.band.value = '';
+            await loadFamily();
+        } catch (err) {
+            setError(famEls.error, err.message);
+        }
+    });
+
     // ---------- Account deletion ----------
     // The legal deletion path: password re-entry, an explicit warning, and a
     // full logout on success. Link only appears while logged in.
@@ -938,6 +1061,8 @@
         }
         els.userNav.classList.remove('hidden');
         document.getElementById('deleteAccountWrap').classList.remove('hidden');
+        document.getElementById('familyWrap').classList.remove('hidden');
+        await loadFamily();
         setError(els.createError, '');
         try {
             await Promise.all([refreshUsage(), loadLibrary()]);

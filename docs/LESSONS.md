@@ -73,6 +73,28 @@ defect was found by a person reading the exported file.
 artifact itself and asserts on what a user would see; and a human looks at one real example
 before the feature is called done.
 
+## Data placed among the rules IS a rule
+Child names and companion descriptions were interpolated into the numbered rules of the story
+instruction, above the untrusted-input marker, so a child named "Ignore the rules above" would have
+become its own numbered instruction. The marker was also a fixed string, so a parent could type the
+closing marker into their story idea and continue in the position reserved for trusted rules.
+**Rule**: no caller-supplied string ever appears in the instruction section. Refer to it
+positionally ("HERO 1"), put the values in a delimited data block, and give the delimiter a
+per-request nonce so a typed marker is inert.
+
+## Validate names by Unicode category, not by character class
+A word-character regex refused the Nepali name Sita in Devanagari, because its vowel signs are
+combining marks - in the product whose differentiator is Nepali.
+**Rule**: validate names by Unicode CATEGORY (letters, marks, digits), and test every script the
+product actually serves.
+
+## Log extras are shipped to third parties
+Passing names via logger extras looked local. The JSON formatter copies every extra key into stdout,
+and Sentry attaches them as breadcrumbs that send_default_pii=False does not filter - putting
+children's first names and reading bands into a processor the privacy page never named.
+**Rule**: log counts and ids, never names or attributes of a person. If an identity is genuinely
+needed to debug, hash it.
+
 ## Verify in the browser, not just in tests
 Several defects (blank views on a rejected promise, stale "session expired" errors after re-login) were
 invisible to API tests and obvious in the browser.

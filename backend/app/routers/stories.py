@@ -13,7 +13,15 @@ from sqlalchemy.orm import selectinload
 from ..config import get_settings
 from ..deps import CurrentUser, DbSession
 from ..jobs import enqueue_generation
-from ..models import GenerationEvent, GenerationJob, Story, StoryPage, User
+from ..models import (
+    ChildProfile,
+    CompanionCharacter,
+    GenerationEvent,
+    GenerationJob,
+    Story,
+    StoryPage,
+    User,
+)
 from ..quota import (
     enforce_auth_attempt_limit,
     enforce_burst_limit,
@@ -23,6 +31,7 @@ from ..quota import (
 )
 from ..routers.jobs import fail_stale_jobs_for_user, fail_story_job_if_stale
 from ..schemas import (
+    CastMemberOut,
     CreateStoryRequest,
     CreateStoryResponse,
     SharedStoryOut,
@@ -30,12 +39,84 @@ from ..schemas import (
     StoryOut,
     StorySummaryOut,
 )
+from ..services import cast as cast_service
 from ..services.pdf import PdfPage, PdfUnavailableError, build_story_pdf
+from ..services.reading_level import resolve_band
 from ..storage import get_storage
 from .auth import _client_ip
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/stories", tags=["stories"])
+
+
+async def _resolve_cast(db, user, body: CreateStoryRequest) -> list[cast_service.CastMember]:
+    """Turn selected profile ids into a frozen cast, in the order given.
+
+    Unknown or someone else's ids are a 404 rather than being silently dropped:
+    a parent who picked three children and got a story about two would have no
+    idea why.
+    """
+    members: list[cast_service.CastMember] = []
+    # De-duplicate while preserving order: the same id twice would otherwise
+    # produce "2 heroes of equal importance" naming one child, on a generation
+    # the parent has already been charged for.
+    body = body.model_copy(
+        update={
+            "child_ids": list(dict.fromkeys(body.child_ids)),
+            "companion_ids": list(dict.fromkeys(body.companion_ids)),
+        }
+    )
+    if body.child_ids:
+        rows = (
+            (
+                await db.execute(
+                    select(ChildProfile).where(
+                        ChildProfile.id.in_(body.child_ids), ChildProfile.user_id == user.id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        by_id = {r.id: r for r in rows}
+        if len(by_id) != len(set(body.child_ids)):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="One of those children was not found"
+            )
+        for cid in body.child_ids:
+            child = by_id[cid]
+            members.append(
+                cast_service.CastMember(role=cast_service.CHILD, name=child.name, age_band=child.age_band)
+            )
+    if body.companion_ids:
+        rows = (
+            (
+                await db.execute(
+                    select(CompanionCharacter).where(
+                        CompanionCharacter.id.in_(body.companion_ids),
+                        CompanionCharacter.user_id == user.id,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        by_id = {r.id: r for r in rows}
+        if len(by_id) != len(set(body.companion_ids)):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="One of those characters was not found"
+            )
+        for cid in body.companion_ids:
+            comp = by_id[cid]
+            members.append(
+                cast_service.CastMember(
+                    role=cast_service.COMPANION,
+                    name=comp.name,
+                    kind=comp.kind,
+                    description=comp.description,
+                )
+            )
+    return members
 
 
 @router.post("", response_model=CreateStoryResponse, status_code=status.HTTP_202_ACCEPTED)
@@ -57,12 +138,20 @@ async def create_story(body: CreateStoryRequest, user: CurrentUser, db: DbSessio
     await enforce_monthly_quota(db, user)
     await enforce_daily_quota(db, user)
 
+    cast = await _resolve_cast(db, user, body)
+    # The youngest selected child sets the reading level for the whole book,
+    # because one book is read to all the siblings at once.
+    band = resolve_band([m.age_band for m in cast_service.children(cast)])
     story = Story(
         user_id=user.id,
         prompt=body.prompt,
-        hero_name=body.hero_name.strip(),
+        # Still the single authoritative name for the PDF cover and social
+        # previews; the cast snapshot supplements it, never replaces it.
+        hero_name=cast_service.hero_name_for(cast, body.hero_name.strip()),
         language=body.language,
         status="pending",
+        cast_json=cast_service.to_json(cast),
+        reading_band=band,
     )
     db.add(story)
     await db.flush()
@@ -258,7 +347,12 @@ async def story_pdf(story_id: str, user: CurrentUser, db: DbSession):
 async def get_story(story_id: str, user: CurrentUser, db: DbSession):
     story = await _load_owned_story(db, user, story_id)
     await fail_story_job_if_stale(db, story)
-    return story
+    out = StoryOut.model_validate(story)
+    # Names only. The age band steers generation and is never returned.
+    out.cast = [
+        CastMemberOut(role=m.role, name=m.name, kind=m.kind) for m in cast_service.from_json(story.cast_json)
+    ]
+    return out
 
 
 @router.post("/{story_id}/share", response_model=ShareResponse)

@@ -193,6 +193,14 @@
                     <textarea id="storyPrompt" rows="3" maxlength="500" placeholder="Example: Leo the Lion and Lily the Lost Girl"></textarea>
                     <span id="promptCount" class="char-count">0 / 500</span>
                 </div>
+                <!-- Saved children and characters. Hidden until at least one
+                     exists, so a parent with no profiles sees exactly the form
+                     they saw before this feature. -->
+                <div id="castPicker" class="field hidden">
+                    <span class="field-label">Who's in this story?</span>
+                    <div id="castOptions" class="cast-options"></div>
+                    <p id="castHint" class="muted small"></p>
+                </div>
                 <div class="field-row">
                     <div class="field">
                         <label for="heroName">Hero's name <span class="muted">(optional)</span></label>
@@ -251,10 +259,43 @@
     <footer class="site-footer">
         <p>KathaSajha · AI-powered story generator · © 2025 KathaSajha</p>
         <p class="footer-links">
+            <span id="familyWrap" class="hidden"><button id="familyLink" class="link-btn">My family</button> · </span>
             <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a><span id="deleteAccountWrap" class="hidden"> ·
             <button id="deleteAccountLink" class="link-btn">Delete my account</button></span>
         </p>
     </footer>
+
+    <!-- Saved children and characters -->
+    <div id="familyBackdrop" class="modal-backdrop hidden">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="familyTitle">
+            <h2 id="familyTitle" class="modal-title">My family</h2>
+            <p class="modal-body muted small">Saved so every story can star them. An age range is
+               optional — it only sets how the story is written, never anything else.</p>
+            <ul id="familyList" class="family-list"></ul>
+            <form id="familyForm" class="family-form">
+                <div class="field">
+                    <label for="familyName">First name</label>
+                    <input id="familyName" type="text" maxlength="60" required placeholder="Aarav">
+                </div>
+                <div class="field">
+                    <label for="familyBand">Age range <span class="muted">(optional)</span></label>
+                    <select id="familyBand">
+                        <option value="">Prefer not to say</option>
+                        <option value="toddler">2-3 years</option>
+                        <option value="preschool">4-5 years</option>
+                        <option value="early_reader">6-7 years</option>
+                        <option value="middle_grade">8-10 years</option>
+                        <option value="preteen">11-12 years</option>
+                    </select>
+                </div>
+                <p id="familyError" class="error-text hidden" role="alert"></p>
+                <div class="modal-actions">
+                    <button type="button" id="familyClose" class="btn btn-secondary">Done</button>
+                    <button type="submit" class="btn btn-primary">Add child</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Account deletion: password re-entry so a borrowed session cannot erase a library -->
     <div id="deleteBackdrop" class="modal-backdrop hidden">

@@ -29,7 +29,7 @@ from .jobs import close_job_pool
 from .models import Story
 from .observability import CorrelationMiddleware, configure_logging
 from .quota import close_redis
-from .routers import auth, health, jobs, plans, stories
+from .routers import auth, health, jobs, plans, profiles, stories
 
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -365,6 +365,7 @@ def create_app() -> FastAPI:
     app.include_router(stories.router)
     app.include_router(jobs.router)
     app.include_router(plans.router)
+    app.include_router(profiles.router)
     if settings.billing_enabled:
         # Mounted only when billing is fully configured. While dormant these
         # paths do not exist at all -- a stub webhook that answers 200 without a

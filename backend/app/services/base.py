@@ -53,6 +53,11 @@ class StoryRequest:
     language: str = "en"  # en | ne
     hero_name: str = ""
     max_paragraphs: int = 5
+    # The story's frozen cast, as stored on the row. Passed as JSON so the
+    # provider boundary stays free of ORM types.
+    cast_json: str = ""
+    # Band code only — an exact age never crosses this boundary.
+    reading_band: str = ""
 
 
 class GenerationProvider(ABC):
