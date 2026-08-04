@@ -24,6 +24,11 @@ Ranked by what would hurt most at launch. Updated every iteration. Items move to
 | Item | Impact | Status |
 |---|---|---|
 | Mock illustrations are ~100 DPI in the PDF | Text is now vector and crisp at any size, but a 768x512 image on a 6.3in page prints soft. True print-on-demand needs ~2550px images, which raises generation cost | OPEN. Blocks Horizon 3 print, not screen use |
+| English visitors pay for i18n they never use | `/assets/i18n.js` is an unconditional blocking script (~5.9 KB gzipped) and the `data-i18n` attributes added ~1.1 KB gzipped to `index.html`. Both revalidate to 304 after first load, so the cost is one round trip and ~7 KB on a cold visit. The legal pages, which previously loaded no JS at all, now block on it too | OPEN. Splitting a ~1 KB switcher-only file for the legal pages would recover most of it |
+| Nepali catalogue is not native-speaker reviewed | `frontend/i18n/ne.js` was written by an AI. The mechanism is sound and gated; the *words* are the risk, and clunky Nepali undercuts the one thing the product is differentiated on | OPEN. Owner item in GO_LIVE.md |
+| PDF furniture stays English inside a Nepali book | `services/pdf.py` already branches on `story.language` for the page text, "समाप्त", and the missing-illustration note, but the colophon (`a KathaSajha storybook`, `Made for X with KathaSajha`, `%B %Y`) is drawn with `set_font("latin")`. Putting Devanagari in those strings without also fixing the font family yields tofu or a raised exception on the paid-feature path | OPEN. Deliberately deferred — the font-family trap makes this more expensive than it looks |
+| Pydantic 422 messages reach users in English | `schemas.py` raises ~14 English `ValueError`s and FastAPI adds its own ("String should have at least 8 characters"). The client now renders a translated generic instead of `detail[0].msg`, which loses field specificity | PARTIAL. Field-level codes would need a `RequestValidationError` handler |
+| `PlanOut.features` is server-sent English marketing copy | Rendered verbatim into the upgrade modal at the moment of highest purchase intent, and served to signed-out visitors. Not covered by the client catalogue | OPEN. Needs `feature_keys` beside the existing strings |
 
 | Item | Impact | Status |
 |---|---|---|

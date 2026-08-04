@@ -333,6 +333,10 @@ class StoryOut(BaseModel):
     prompt: str
     status: str
     error: str
+    # Both fields go out together: the client prefers the code when it has a
+    # translation for it and renders `error` otherwise, which is what keeps
+    # rows written before this column readable.
+    error_code: str = ""
     language: str
     share_slug: str | None
     provider: str
@@ -377,6 +381,7 @@ class JobOut(BaseModel):
     progress_current: int
     progress_total: int
     error: str
+    error_code: str = ""
 
     model_config = {"from_attributes": True}
 

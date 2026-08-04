@@ -25,6 +25,11 @@ from .billing_guard import validate_billing_settings
 from .config import get_settings
 from .db import dispose_engine, init_db
 from .deps import DbSession
+from .errors import (
+    GENERATION_INTERRUPTED,
+    CodedHTTPException,
+    coded_exception_handler,
+)
 from .jobs import close_job_pool
 from .models import Story
 from .observability import CorrelationMiddleware, configure_logging
@@ -118,13 +123,23 @@ async def lifespan(app: FastAPI):
                 .values(
                     status="failed",
                     stage="failed",
+                    # Both written, always. The prose is what an older client
+                    # renders and what every row predating the code column
+                    # already holds; the code is what a Nepali client can
+                    # translate. Dropping the prose would break the client
+                    # during any deploy where the worker moves first.
                     error="Interrupted by a server restart. Please try again.",
+                    error_code=GENERATION_INTERRUPTED,
                 )
             )
             await session.execute(
                 update(Story)
                 .where(Story.status.in_(["pending", "generating"]))
-                .values(status="failed", error="Interrupted by a server restart. Please try again.")
+                .values(
+                    status="failed",
+                    error="Interrupted by a server restart. Please try again.",
+                    error_code=GENERATION_INTERRUPTED,
+                )
             )
             await session.commit()
     logger.info(
@@ -294,6 +309,11 @@ def create_app() -> FastAPI:
         docs_url="/api/docs",
         openapi_url="/api/openapi.json",
     )
+
+    # Errors that name themselves. Registered for the subclass only, so every
+    # plain HTTPException keeps FastAPI's own handler and its {"detail": ...}
+    # shape untouched.
+    app.add_exception_handler(CodedHTTPException, coded_exception_handler)
 
     # PNG/JPEG illustrations are already compressed; gzipping them burns CPU for
     # roughly nothing. Only JSON and the SPA assets are worth compressing.

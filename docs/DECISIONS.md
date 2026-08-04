@@ -68,3 +68,53 @@ features, and calls to action; the auth form is one click away. Shared-story vis
 signup call to action.
 **Why**: Consumer products must sell before they ask for an email. The shared-story page is the growth
 loop and needed a conversion path.
+
+## ADR-009: English is the source, not a catalogue; only other locales get a file
+**Status**: accepted
+**Context**: The UI carried ~130 English strings in `index.html` and ~55 built at runtime in `app.js`.
+The obvious design extracts all of them into `en.json` and `ne.json` and renders from the catalogue.
+**Decision**: English stays literally where it is — in the markup, annotated with `data-i18n="key"`,
+and in an `EN` object inside `frontend/i18n.js` for strings the app constructs. `frontend/i18n/ne.js`
+is the only catalogue, loaded only when the locale is not English.
+**Why**: "Nothing regresses for an English user" becomes structural instead of a promise — an English
+visitor makes the same requests, receives the same bytes, and would still see correct English if every
+line of the i18n code were deleted. The failure mode of every bug in the applier is "the app is in
+English", never "the app is broken" and never "the app shows i18n.key.name".
+
+## ADR-010: The catalogue is applied client-side, not rendered server-side
+**Status**: accepted
+**Context**: CSP is `script-src 'self'` with no `'unsafe-inline'`, so there is no inline `<head>` script
+available to pre-empt the paint. The alternative was rendering the shell per locale in FastAPI, extending
+the seam that already rewrites `index.html` for social previews.
+**Decision**: Client-side. `i18n.js` loads before `app.js`, fetches the catalogue, translates the DOM,
+and resolves `KS_I18N.ready`; `app.js` gates its entire boot router on that promise.
+**Why**: Every `<section class="view">` already ships `class="hidden"` and is revealed only by `show()`,
+which now runs inside the gate — so the landing hero, the screen that decides signups, cannot flash from
+English to Nepali. Only the header and footer paint for one frame in English, which is accepted.
+Server rendering would have converted six routes from `FileResponse` to `HTMLResponse` (losing 304
+revalidation), required `Vary: Cookie` on every one of them, and made the `/shared/{slug}` social-meta
+injection order load-bearing — three failure modes, on the growth loop, to remove one frame of chrome.
+
+## ADR-011: Server errors carry a code beside their English prose, not an Accept-Language translation
+**Status**: accepted
+**Context**: ~44 `HTTPException(detail="English sentence")` sites, plus English sentences frozen into
+`Story.error` and `GenerationJob.error`.
+**Decision**: `CodedHTTPException` adds `code` and `params` as **siblings** to `detail`; `detail` stays an
+English string forever. `Story.error_code` / `GenerationJob.error_code` are written alongside the existing
+prose on every failure. The client prefers a `srv.<code>` translation and falls back to the server's prose.
+**Why**: The string most worth translating is written by the ARQ worker — a separate process started from
+a job id, with no request and no headers in scope. A code travels through a database column; a header does
+not. Keeping `detail` a string means an older client is unaffected (`app.js` tests
+`typeof detail === 'string'`, so an object would degrade every error to "Request failed (429)"), and
+keeping the prose column means rows written before the codes existed, or by a worker deployed ahead of the
+API, still render.
+
+## ADR-012: Numerals stay Latin in both locales
+**Status**: accepted
+**Context**: CLDR's default numbering system for `ne` is `deva`, so `toLocaleDateString('ne-NP')` emits
+`३ अगस्ट` while `toFixed(2)` prices and quota counts stay Latin — on the same library card.
+**Decision**: Latin digits everywhere, including inside Nepali prose in the catalogue. Dates use an
+explicit `ne-NP-u-nu-latn`. Pinned by a test that rejects Devanagari digits in `ne.js`.
+**Why**: Decided once and written down, rather than letting ICU decide it implicitly per call site.
+Prices and quota limits cannot be Devanagari without more work, and mixed numerals are worse than either
+choice made consistently.

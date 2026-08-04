@@ -5,8 +5,17 @@ Interactive docs: `/api/docs`. Machine-readable: `/api/openapi.json`.
 
 ## Conventions
 
-- Errors return `{"detail": "<human sentence>"}`. `detail` is always safe to show a user.
-- Validation errors (422) return FastAPI's list form; the client reads `detail[0].msg`.
+- Errors return `{"detail": "<human sentence>"}`. `detail` is always safe to show a user,
+  and is **always a string** — never an object. Clients may rely on that.
+- Errors a user can actually reach also carry siblings: `{"detail": "...", "code": "quota.daily",
+  "params": {"limit": 10, "plan": "free"}}`. `code` is a stable identifier for the failure and
+  `params` holds scalars for interpolation. Both are additive: a client that ignores them shows
+  `detail` and behaves exactly as before. English readers see `detail`; other locales prefer a
+  local translation of `code` and fall back to `detail` when they have none.
+- Codes are stable API surface once shipped. Add codes; do not repurpose them — some are frozen
+  into database rows (`error_code`) that a user may open months later.
+- Validation errors (422) return FastAPI's list form and carry no `code`; they are framework
+  English and are not translated. The client renders a generic sentence for them.
 - Ids are 32-char hex strings.
 - Times are ISO-8601 UTC.
 
@@ -46,7 +55,7 @@ owner-identifying field.
 
 | Method | Path | Returns |
 |---|---|---|
-| GET | `/api/jobs/{id}` | `{id, story_id, status, stage, progress_current, progress_total, error}` |
+| GET | `/api/jobs/{id}` | `{id, story_id, status, stage, progress_current, progress_total, error, error_code}` |
 
 `stage` drives the progress copy: `queued`, `writing_story`, `illustrating`, `done`, `failed`.
 A job with no heartbeat for 15 minutes is failed over on read, so clients always terminate.

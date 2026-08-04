@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import get_settings
+from .errors import CodedHTTPException
 from .models import GenerationEvent, User
 from .plans import daily_stories_for, effective_plan_code, monthly_stories_for
 
@@ -86,12 +87,17 @@ async def enforce_daily_quota(db: AsyncSession, user: User) -> None:
     limit = daily_limit_for(user)
     used = await stories_created_today(db, user)
     if used >= limit:
-        raise HTTPException(
+        raise CodedHTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            code="quota.daily",
             detail=(
                 f"You've used all {limit} stories on your {effective_plan_for(user)} plan today. "
                 "Your allowance resets tomorrow."
             ),
+            # The plan CODE, not its display name: a client rendering this in
+            # another language needs the machine value, and plans.py owns the
+            # human one.
+            params={"limit": limit, "plan": effective_plan_for(user)},
             headers={"X-Quota-Exhausted": "daily"},
         )
 
@@ -100,12 +106,14 @@ async def enforce_monthly_quota(db: AsyncSession, user: User) -> None:
     limit = monthly_limit_for(user)
     used = await stories_created_this_month(db, user)
     if used >= limit:
-        raise HTTPException(
+        raise CodedHTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            code="quota.monthly",
             detail=(
                 f"You've used all {limit} stories on your {effective_plan_for(user)} plan this month. "
                 "Your allowance resets at the start of next month."
             ),
+            params={"limit": limit, "plan": effective_plan_for(user)},
             # Same signal as the daily wall: the frontend answers it with an
             # upgrade offer rather than a red error line.
             headers={"X-Quota-Exhausted": "monthly"},
@@ -137,8 +145,9 @@ async def enforce_global_budget(db: AsyncSession) -> None:
         )
     except Exception as e:
         logger.error("Global budget check failed; refusing generation: %s", e, exc_info=True)
-        raise HTTPException(
+        raise CodedHTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            code="capacity.paused",
             detail="Story creation is briefly paused. Please try again in a few minutes.",
         ) from e
 
@@ -149,8 +158,9 @@ async def enforce_global_budget(db: AsyncSession) -> None:
             "GLOBAL DAILY GENERATION CEILING REACHED",
             extra={"generations_today": total, "limit": limit},
         )
-        raise HTTPException(
+        raise CodedHTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            code="capacity.full",
             detail="KathaSajha is at capacity for today. Please try again tomorrow.",
         )
     if total >= int(limit * 0.8):
@@ -174,8 +184,9 @@ async def enforce_burst_limit(user: User) -> None:
         if count == 1:
             await r.expire(key, 3900)
         if count > settings.rate_limit_generate_per_hour:
-            raise HTTPException(
+            raise CodedHTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                code="rate.generate",
                 detail="You're creating stories too quickly. Please wait a little while.",
             )
     except HTTPException:
@@ -199,8 +210,9 @@ async def enforce_auth_attempt_limit(scope: str, identifier: str) -> None:
         if count == 1:
             await r.expire(key, 900)
         if count > settings.rate_limit_auth_per_10min:
-            raise HTTPException(
+            raise CodedHTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                code="rate.auth",
                 detail="Too many attempts. Please wait a few minutes and try again.",
             )
     except HTTPException:

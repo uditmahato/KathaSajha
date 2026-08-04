@@ -11,6 +11,7 @@ from sqlalchemy import delete, select, update
 
 from ..config import get_settings
 from ..db import get_session_factory
+from ..errors import GENERATION_FAILED
 from ..models import GenerationEvent, GenerationJob, Story, StoryPage
 from ..storage import get_storage
 from . import cast as cast_service
@@ -256,17 +257,22 @@ async def run_generation(story_id: str) -> None:
         logger.info("Story %s generated (%d pages)", story_id, total)
 
     except Exception as e:
+        coded = isinstance(e, GenerationError)
         user_message = (
-            e.user_message
-            if isinstance(e, GenerationError)
-            else "Something went wrong while creating your story. Please try again."
+            e.user_message if coded else "Something went wrong while creating your story. Please try again."
         )
+        # Prose AND code, always. This runs in the worker, a container deployed
+        # separately from the API, so a row can be written by a new worker and
+        # read by an old client or the reverse. The prose is the compatibility
+        # layer and stays until the code path has survived a full deploy cycle.
+        error_code = e.code if coded else GENERATION_FAILED
         logger.error("Generation failed for story %s: %s", story_id, e, exc_info=True)
         async with factory() as session:
             story = await session.get(Story, story_id)
             if story is not None:
                 story.status = "failed"
                 story.error = user_message
+                story.error_code = error_code
             # The story never reached the reader, so refund the ledger entry:
             # the user must not lose an allowance to our failure.
             await session.execute(
@@ -275,4 +281,4 @@ async def run_generation(story_id: str) -> None:
                 .values(refunded=True, refund_reason="generation_failed")
             )
             await session.commit()
-        await _update_job(job_id, status="failed", stage="failed", error=user_message)
+        await _update_job(job_id, status="failed", stage="failed", error=user_message, error_code=error_code)

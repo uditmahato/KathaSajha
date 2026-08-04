@@ -75,6 +75,10 @@ class GenerationProvider(ABC):
 class GenerationError(Exception):
     """Raised when story text generation fails (images fail soft, stories fail hard)."""
 
-    def __init__(self, message: str, *, user_message: str = ""):
+    def __init__(self, message: str, *, user_message: str = "", code: str = ""):
         super().__init__(message)
         self.user_message = user_message or "Story generation failed. Please try a different idea."
+        # Names the failure so it survives into another language. Defaults to
+        # the generic code because the default user_message is the generic
+        # sentence; a provider that sets one should set both.
+        self.code = code or "generation.failed"

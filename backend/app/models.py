@@ -218,6 +218,12 @@ class Story(Base):
     status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
     # pending -> generating -> complete | failed
     error: Mapped[str] = mapped_column(Text, default="")
+    # The same failure, named. `error` is an English sentence frozen at the
+    # moment generation failed, often by the worker in another process, so it
+    # can never be re-rendered in another language. The code can. Both are
+    # written on every failure: rows predating this column, and rows written by
+    # a worker deployed before the API, still have prose to fall back to.
+    error_code: Mapped[str] = mapped_column(String(40), default="", server_default="")
     share_slug: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True, index=True)
     provider: Mapped[str] = mapped_column(String(20), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
@@ -268,6 +274,7 @@ class GenerationJob(Base):
     progress_current: Mapped[int] = mapped_column(Integer, default=0)
     progress_total: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str] = mapped_column(Text, default="")
+    error_code: Mapped[str] = mapped_column(String(40), default="", server_default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

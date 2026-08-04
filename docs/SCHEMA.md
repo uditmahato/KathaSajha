@@ -24,6 +24,7 @@ SQLite returns naive datetimes, so code that compares them normalizes with `repl
 | title | str(300) | filled by generation |
 | status | str(20), indexed | `pending` -> `generating` -> `complete` \| `failed` |
 | error | text | user-facing message only, never raw exceptions |
+| error_code | varchar(40), default "" | stable name for the same failure, so it can be shown in another language; `error` is always written too and stays the fallback |
 | share_slug | str(32) unique nullable, indexed | 48 bits of entropy, null when unshared |
 | provider | str(20) | which provider produced it, for debugging and cost attribution |
 | created_at | timestamptz, indexed | drives the daily quota query and library ordering |
@@ -48,6 +49,7 @@ SQLite returns naive datetimes, so code that compares them normalizes with `repl
 | stage | str(50) | `queued`, `writing_story`, `illustrating`, `done`, `failed`. Drives the progress UI copy |
 | progress_current / progress_total | int | illustrations finished / total |
 | error | text | user-facing |
+| error_code | varchar(40), default "" | mirrors stories.error_code |
 | created_at / updated_at | timestamptz | `updated_at` is the heartbeat used for stale-job failover (15 min) |
 
 ## Query patterns that justify the indexes
