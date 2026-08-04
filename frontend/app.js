@@ -144,8 +144,20 @@
     function logout() {
         localStorage.removeItem(TOKEN_KEY);
         els.userNav.classList.add('hidden');
+        document.getElementById('deleteAccountWrap').classList.add('hidden');
         stopPolling();
         if (libraryTimer) { clearTimeout(libraryTimer); libraryTimer = null; }
+        // Clear everything the previous account left behind: on a shared
+        // computer the next person must not see the last family's story,
+        // library, or usage — especially right after an account deletion.
+        currentStory = null;
+        isSharedView = false;
+        currentSharedSlug = null;
+        plansCache = null;
+        els.storyTitle.textContent = '';
+        els.storyContent.replaceChildren();
+        els.libraryGrid.replaceChildren();
+        els.usageBadge.textContent = '';
         show(els.landingView);
     }
 
@@ -804,6 +816,77 @@
         }
     });
 
+    // ---------- Account deletion ----------
+    // The legal deletion path: password re-entry, an explicit warning, and a
+    // full logout on success. Link only appears while logged in.
+    const delEls = {
+        wrap: $('deleteAccountWrap'), link: $('deleteAccountLink'), backdrop: $('deleteBackdrop'),
+        form: $('deleteForm'), password: $('deletePassword'), error: $('deleteError'),
+        cancel: $('deleteCancel'), confirm: $('deleteConfirm'),
+    };
+
+    let deleteInFlight = false;
+    let deletePreviousFocus = null;
+
+    function closeDeleteModal() {
+        // Never dismissable mid-request: the DELETE is irreversible and a late
+        // error must not land in a modal that is no longer on screen.
+        if (deleteInFlight) return;
+        delEls.backdrop.classList.add('hidden');
+        delEls.password.value = '';
+        setError(delEls.error, '');
+        if (deletePreviousFocus && deletePreviousFocus.focus) deletePreviousFocus.focus();
+    }
+
+    delEls.link.addEventListener('click', () => {
+        deletePreviousFocus = document.activeElement;
+        delEls.password.value = '';
+        setError(delEls.error, '');
+        delEls.backdrop.classList.remove('hidden');
+        delEls.password.focus();
+    });
+    delEls.cancel.addEventListener('click', closeDeleteModal);
+    delEls.backdrop.addEventListener('mousedown', (e) => { if (e.target === delEls.backdrop) closeDeleteModal(); });
+    document.addEventListener('keydown', (e) => {
+        if (delEls.backdrop.classList.contains('hidden')) return;
+        if (e.key === 'Escape') return closeDeleteModal();
+        if (e.key !== 'Tab') return;
+        // Trap focus, matching confirmDialog: a modal that leaks focus to the
+        // page behind it is unusable by keyboard and screen-reader users.
+        const focusables = [delEls.password, delEls.cancel, delEls.confirm];
+        const first = focusables[0], last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+
+    delEls.form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        setError(delEls.error, '');
+        deleteInFlight = true;
+        delEls.confirm.disabled = true;
+        delEls.cancel.disabled = true;
+        const label = delEls.confirm.textContent;
+        delEls.confirm.textContent = 'Deleting...';
+        try {
+            const r = await api('/api/auth/me', {
+                method: 'DELETE',
+                body: JSON.stringify({ password: delEls.password.value }),
+            });
+            deleteInFlight = false;
+            closeDeleteModal();
+            logout();
+            toast(r.message, 'success');
+        } catch (err) {
+            deleteInFlight = false;
+            setError(delEls.error, err.message);
+        } finally {
+            deleteInFlight = false;
+            delEls.confirm.disabled = false;
+            delEls.cancel.disabled = false;
+            delEls.confirm.textContent = label;
+        }
+    });
+
     // ---------- Nav ----------
     function goToAuth(mode) {
         setAuthMode(mode);
@@ -854,6 +937,7 @@
             return logout();
         }
         els.userNav.classList.remove('hidden');
+        document.getElementById('deleteAccountWrap').classList.remove('hidden');
         setError(els.createError, '');
         try {
             await Promise.all([refreshUsage(), loadLibrary()]);

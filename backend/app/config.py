@@ -114,6 +114,8 @@ class Settings(BaseSettings):
     cors_origins: str = ""
 
     # --- Observability ---
+    # Error tracking is dormant until a DSN exists, same pattern as billing.
+    sentry_dsn: str = ""
     log_level: str = "INFO"
     log_format: Literal["json", "text"] = "text"  # compose sets json in production
 

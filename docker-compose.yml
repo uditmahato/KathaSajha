@@ -19,10 +19,28 @@ x-app-env: &app-env
   STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
   STRIPE_PRICE_IDS: ${STRIPE_PRICE_IDS:-}
   PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+  # Email and error tracking must be listed here or setting them in .env
+  # changes nothing inside the containers (the compose lesson from billing).
+  EMAIL_BACKEND: ${EMAIL_BACKEND:-console}
+  EMAIL_FROM: ${EMAIL_FROM:-KathaSajha <no-reply@kathasajha.com>}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SENTRY_DSN: ${SENTRY_DSN:-}
   TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
   RATE_LIMIT_ENABLED: "true"
   LOG_FORMAT: ${LOG_FORMAT:-json}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+x-logging: &default-logging
+  # Bounded so the privacy page's "security logs kept up to 30 days" is
+  # enforced by configuration rather than promised by prose. Request logs
+  # carry IP addresses.
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
 
 services:
   db:
@@ -71,6 +89,7 @@ services:
 
   api:
     build: .
+    logging: *default-logging
     environment: *app-env
     ports:
       - "${API_PORT:-8000}:8000"
@@ -98,6 +117,7 @@ services:
 
   worker:
     build: .
+    logging: *default-logging
     command: ["arq", "app.worker.WorkerSettings"]
     environment: *app-env
     volumes:

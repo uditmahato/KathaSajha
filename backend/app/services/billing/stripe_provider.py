@@ -157,6 +157,19 @@ class StripeBillingProvider(BillingProvider):
             subscription=self._state_from(sub) if sub and not isinstance(sub, str) else None,
         )
 
+    async def cancel_subscription(self, subscription_id: str) -> bool:
+        def _cancel():
+            return self.client.subscriptions.cancel(subscription_id)
+
+        try:
+            await asyncio.to_thread(_cancel)
+            return True
+        except Exception as e:
+            # Deletion proceeds regardless; a live subscription on a deleted
+            # account is an operator problem, and this log is its ticket.
+            logger.error("Could not cancel subscription %s: %s", subscription_id, e, exc_info=True)
+            return False
+
     def verify_webhook(self, *, payload: bytes, signature: str) -> BillingEvent:
         if not self.webhook_secret:
             raise WebhookVerificationError("No webhook secret configured")

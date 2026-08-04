@@ -33,6 +33,12 @@ class Plan:
     highlight: bool = False
 
 
+# A subscription in any of these is live enough that a second one would
+# double-bill, and live enough that deleting the account must cancel it.
+# Lives here, not in the billing router, because that router is only mounted
+# when billing is configured while deletion always exists.
+ACTIVE_SUBSCRIPTION_STATUSES = frozenset({"active", "trialing", "past_due", "incomplete", "unpaid"})
+
 PLANS: dict[str, Plan] = {
     "free": Plan(
         code="free",

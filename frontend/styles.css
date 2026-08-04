@@ -324,3 +324,13 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--oldgold); b
     .modal-actions { flex-direction: column-reverse; }
     .modal-actions .btn { width: 100%; }
 }
+
+/* Legal pages and account deletion */
+.footer-links { margin-top: 0.35rem; }
+.footer-links a { color: var(--sepia-soft); }
+.consent-note { text-align: center; margin: 0.7rem 0 0; }
+.legal-page { max-width: 44rem; margin: 0 auto; padding: 1.5rem 1.2rem 3rem; }
+.legal-page h1 { font-family: 'Playfair Display', serif; color: var(--sepia); }
+.legal-page h2 { color: var(--sepia); margin-top: 1.6rem; font-size: 1.15rem; }
+.legal-page li { margin-bottom: 0.4rem; }
+#deleteBackdrop .field { margin: 0.8rem 0; }

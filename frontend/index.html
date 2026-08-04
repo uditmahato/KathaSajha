@@ -141,6 +141,8 @@
                     </div>
                     <p id="authError" class="error-text hidden" role="alert"></p>
                     <button type="submit" id="authSubmit" class="btn btn-primary btn-block">Log in</button>
+                    <p class="muted small consent-note">By creating an account you agree to the
+                        <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>.</p>
                 </form>
                 <p class="auth-alt">
                     <button type="button" id="forgotLink" class="link-btn">Forgot your password?</button>
@@ -248,7 +250,31 @@
 
     <footer class="site-footer">
         <p>KathaSajha · AI-powered story generator · © 2025 KathaSajha</p>
+        <p class="footer-links">
+            <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a><span id="deleteAccountWrap" class="hidden"> ·
+            <button id="deleteAccountLink" class="link-btn">Delete my account</button></span>
+        </p>
     </footer>
+
+    <!-- Account deletion: password re-entry so a borrowed session cannot erase a library -->
+    <div id="deleteBackdrop" class="modal-backdrop hidden">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="deleteTitle" aria-describedby="deleteBody">
+            <h2 id="deleteTitle" class="modal-title">Delete your account?</h2>
+            <p id="deleteBody" class="modal-body">This permanently removes your account, every story,
+               and every illustration. There is no undo. Enter your password to confirm.</p>
+            <form id="deleteForm">
+                <div class="field">
+                    <label for="deletePassword">Password</label>
+                    <input id="deletePassword" type="password" autocomplete="current-password" required>
+                </div>
+                <p id="deleteError" class="error-text hidden" role="alert"></p>
+                <div class="modal-actions">
+                    <button type="button" id="deleteCancel" class="btn btn-secondary">Keep my account</button>
+                    <button type="submit" id="deleteConfirm" class="btn btn-danger">Delete everything</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Toasts: non-blocking feedback, announced to screen readers -->
     <div id="toastHost" class="toast-host" role="status" aria-live="polite" aria-atomic="false"></div>

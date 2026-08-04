@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..config import get_settings
 from ..deps import CurrentUser, DbSession
 from ..models import BillingEventRecord, User
-from ..plans import get_plan, plan_code_for_price_id
+from ..plans import ACTIVE_SUBSCRIPTION_STATUSES, get_plan, plan_code_for_price_id
 from ..quota import effective_plan_for, enforce_auth_attempt_limit
 from ..schemas import CheckoutRequest, CheckoutSessionOut, PortalSessionOut, SubscriptionStateOut
 from ..services.billing import get_billing
@@ -29,10 +29,6 @@ from ..services.billing.base import BillingError, SubscriptionState, WebhookVeri
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/billing", tags=["billing"])
-
-# A subscription in any of these is live enough that starting a second one
-# would double-bill. `incomplete` counts: the customer is mid-payment.
-ACTIVE_SUBSCRIPTION_STATUSES = frozenset({"active", "trialing", "past_due", "incomplete", "unpaid"})
 
 # Only these change entitlement. Everything else is acknowledged and ignored:
 # returning an error for an unrecognised type makes Stripe retry for three days

@@ -17,3 +17,4 @@ Pillow==11.2.1
 fpdf2==2.8.7
 uharfbuzz==0.56.0
 python-dotenv==1.1.0
+sentry-sdk==2.66.1

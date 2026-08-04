@@ -92,7 +92,13 @@ class GenerationEvent(Base):
     __tablename__ = "generation_events"
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    # SET NULL, not CASCADE: this ledger is the platform's financial record and
+    # the global daily cost ceiling counts it. Cascading on account deletion
+    # would let create-generate-delete loops drain the budget invisibly, and
+    # GDPR deletion requires removing the PERSON, not the accounting.
+    user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     story_id: Mapped[str | None] = mapped_column(
         ForeignKey("stories.id", ondelete="SET NULL"), nullable=True, index=True
     )
