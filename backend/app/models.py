@@ -59,6 +59,47 @@ class User(Base):
     stories: Mapped[list["Story"]] = relationship(back_populates="owner", cascade="all, delete-orphan")
 
 
+class ChildProfile(Base):
+    """A child a parent saves so personalisation survives across stories.
+
+    Deliberately minimal for a children's product: a first name and an OPTIONAL
+    coarse age band. No birthday, no exact age, no free text, no interests. The
+    band is the only age information the system ever consumes — storing an
+    integer would collect more than is used, which is exactly what a
+    data-minimisation review asks about.
+    """
+
+    __tablename__ = "child_profiles"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(60))
+    # "" = the parent did not say. Never inferred, never auto-advanced.
+    age_band: Mapped[str] = mapped_column(String(16), default="", server_default="")
+    # Bumped only when the BAND changes, so the UI can ask "still preschool?"
+    # after a long while instead of silently ageing a child on a timer.
+    age_band_set_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class CompanionCharacter(Base):
+    """A non-child character a family reuses: a pet, a bird, a favourite toy.
+
+    Separate from ChildProfile rather than one table with a discriminator,
+    because the columns genuinely differ and — more importantly — a companion
+    must never be able to carry an age band.
+    """
+
+    __tablename__ = "companion_characters"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(60))
+    kind: Mapped[str] = mapped_column(String(20), default="animal")  # animal|bird|toy|other
+    description: Mapped[str] = mapped_column(String(120), default="", server_default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class PlanInterest(Base):
     """Demand signal for a tier that cannot be bought yet.
 
@@ -166,6 +207,14 @@ class Story(Base):
     hero_name: Mapped[str] = mapped_column(String(60), default="")
     title: Mapped[str] = mapped_column(String(300), default="")
     language: Mapped[str] = mapped_column(String(10), default="en")  # en | ne
+    # Frozen at create time: who starred, as JSON. A snapshot rather than a
+    # foreign key, so renaming or deleting a profile never rewrites a book
+    # already on the shelf. "" means a story made before profiles existed and
+    # it renders through exactly the paths it always did.
+    cast_json: Mapped[str] = mapped_column(Text, default="", server_default="")
+    # The reading band this story was written for. Band code only — never an
+    # age. "" reproduces pre-feature behaviour.
+    reading_band: Mapped[str] = mapped_column(String(16), default="", server_default="")
     status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
     # pending -> generating -> complete | failed
     error: Mapped[str] = mapped_column(Text, default="")

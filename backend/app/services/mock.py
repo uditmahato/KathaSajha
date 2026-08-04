@@ -12,6 +12,8 @@ from io import BytesIO
 
 from PIL import Image, ImageDraw
 
+from . import cast as cast_service
+from . import reading_level
 from .base import GeneratedImage, GenerationProvider, StoryDraft, StoryRequest
 
 _PALETTES = [
@@ -43,11 +45,66 @@ def _cap(s: str) -> str:
 class MockProvider(GenerationProvider):
     name = "mock"
 
+    def _ensemble(self, req, cast, kids, level, rng) -> StoryDraft:
+        """A story where every named child acts in most scenes.
+
+        Written to satisfy cast.coverage_gaps, so the detector is exercised
+        against text that should pass and tests can trust a failure to mean a
+        real regression rather than a weak fixture.
+        """
+        friends = cast_service.companions(cast)
+        names = [k.name for k in kids]
+        joined = ", ".join(names[:-1]) + " and " + names[-1]
+        helper = f" {friends[0].name} padded along beside them." if friends else ""
+        ne = req.language == "ne"
+        # Seeded from the prompt like the single-hero path: without this, every
+        # multi-child story a family ever makes reads identically.
+        quest = rng.choice(["set out together", "slipped out at dawn", "followed the old path"])
+        turn = rng.choice(["the wind changed", "the path split in two", "the light began to fade"])
+        title = f"{joined}" + ("को कथा" if ne else " and the Story of ") + req.prompt[:40]
+
+        paragraphs = [
+            (f"{joined} " + ("सँगै हिँडे। " if ne else f"{quest}. "))
+            + (f"They wanted one thing: {req.prompt}. " if not ne else f"{req.prompt} भन्ने कुरा मनमा थियो। ")
+            + " ".join(f"{n} led the way for a while." for n in names)
+            + helper,
+            " ".join(
+                f"{n} tried something no one else had thought of, and it worked a little." for n in names
+            ),
+            (f"Then {turn}. " if not ne else "अनि परिस्थिति बदलियो। ")
+            + " ".join(f"{n} would not give up when it grew hard." for n in names)
+            + (" सबै मिलेर अघि बढे।" if ne else " Together they kept going."),
+            (f"In the end {joined} " + ("सँगै समाधान गरे।" if ne else "solved it together. "))
+            + " ".join(f"{n} did the part only {n} could do." for n in names),
+        ]
+        n = min(level.paragraphs, req.max_paragraphs, len(paragraphs))
+        paragraphs = paragraphs[:n]
+        prompts = [
+            f"Colorful children's storybook illustration of {joined}, scene {i + 1}: {p[:120]}"
+            for i, p in enumerate(paragraphs)
+        ]
+        return StoryDraft(
+            title=title,
+            paragraphs=paragraphs,
+            image_prompts=prompts,
+            moral="Everyone has something only they can do.",
+        )
+
     async def write_story(self, req: StoryRequest) -> StoryDraft:
         await asyncio.sleep(0.8)  # simulate model latency so progress UI is visible
         rng = random.Random(hashlib.sha256(req.prompt.encode()).hexdigest())
-        hero = req.hero_name or "our young hero"
-        n = req.max_paragraphs
+        cast = cast_service.from_json(req.cast_json)
+        kids = cast_service.children(cast)
+        level = reading_level.level_for_band(req.reading_band)
+
+        if len(kids) > 1:
+            # Multi-hero must be genuinely exercised offline. A mock that
+            # ignored the cast would make every ensemble test vacuous — the
+            # exact failure mode the PDF exporter shipped with.
+            return self._ensemble(req, cast, kids, level, rng)
+
+        hero = (kids[0].name if kids else req.hero_name) or "our young hero"
+        n = min(level.paragraphs, req.max_paragraphs)
 
         if req.language == "ne":
             opening = rng.choice(_OPENINGS_NE)

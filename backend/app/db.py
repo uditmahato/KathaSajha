@@ -82,7 +82,49 @@ async def init_db() -> None:
             ).scalar() is not None
             if has_schema:
                 return  # Alembic is in charge; do not create anything behind its back
+        if conn.dialect.name == "sqlite":
+            # BEFORE create_all: afterwards the new tables exist and any advice
+            # to run migrations would collide with them on the baseline.
+            await _warn_on_sqlite_drift(conn)
         await conn.run_sync(Base.metadata.create_all)
+
+
+async def _warn_on_sqlite_drift(conn) -> None:
+    """Fail loudly when a keyless-dev SQLite file is missing new columns.
+
+    `create_all` adds missing TABLES but never alters existing ones, so a dev
+    database created before a migration keeps working until the first insert
+    touches a new column — then it is an opaque 500 mid-request. Postgres never
+    sees this (compose runs `alembic upgrade head` before the app starts), so
+    the check is SQLite-only and costs one PRAGMA per table at boot.
+    """
+    from sqlalchemy import inspect as sa_inspect
+
+    def _missing(sync_conn) -> dict[str, list[str]]:
+        inspector = sa_inspect(sync_conn)
+        existing_tables = set(inspector.get_table_names())
+        gaps: dict[str, list[str]] = {}
+        for table in Base.metadata.sorted_tables:
+            if table.name not in existing_tables:
+                continue
+            actual = {c["name"] for c in inspector.get_columns(table.name)}
+            absent = [c.name for c in table.columns if c.name not in actual]
+            if absent:
+                gaps[table.name] = absent
+        return gaps
+
+    gaps = await conn.run_sync(_missing)
+    if gaps:
+        detail = "; ".join(f"{t} is missing {', '.join(cols)}" for t, cols in gaps.items())
+        # A file created by create_all carries no alembic stamp, so
+        # `alembic upgrade head` would try to run the baseline against existing
+        # tables and fail on "table users already exists". Deleting is the
+        # honest remedy for a keyless dev database holding mock stories.
+        raise RuntimeError(
+            f"This SQLite database is behind the models ({detail}). Delete the file and "
+            "restart to recreate it, or run `alembic upgrade head` if it was created by "
+            "migrations in the first place."
+        )
 
 
 async def dispose_engine() -> None:
