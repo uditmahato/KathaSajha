@@ -1,7 +1,18 @@
 # Roadmap
 
-Tied to the business model: free tier to activate, subscription for recurring revenue, print-on-demand
-for revenue per user that subscriptions alone cannot reach.
+## Who this is for
+
+A **Non-Resident Nepali parent** — in the US, UK, Australia, the EU or the Gulf — raising a child
+who is losing the language. Not a parent in Kathmandu, who has Nepali all around them and needs
+entertainment. This one needs an intervention, and will pay for it. See ADR-013.
+
+That distinction decides real things. The child frequently understands spoken Nepali but cannot
+read Devanagari, so the script is a barrier rather than a feature. The buying parent usually reads
+English fine. The grandparents are in Nepal, which is what makes the share link the growth loop.
+Stripe is the right payment rail and a Nepal-domestic one is not needed to launch.
+
+Tied to the business model: free tier to activate, subscription for recurring revenue,
+print-on-demand for revenue per user that subscriptions alone cannot reach.
 
 Status is written down so this file stays usable as an answer to "what is left".
 DONE means shipped and tested; anything unmarked is still ahead.
@@ -25,11 +36,32 @@ DONE means shipped and tested; anything unmarked is still ahead.
 - **DONE** Plans, pricing page, entitlements enforced by quota, and `plan_interest` demand capture.
 - **DONE** Stripe for international cards: hosted checkout, billing portal, signature-verified
   webhooks with idempotency and an out-of-order watermark. Dormant until credentials exist.
-- **eSewa/Khalti for Nepal.** The real remaining gap: Stripe cannot take most Nepali cards, so
-  today's only rail serves the diaspora, not Kathmandu. `BillingProvider` already abstracts this.
+- ~~eSewa/Khalti for Nepal~~ — **deferred by targeting.** Stripe covers the NRN audience; a Nepal
+  rail is only needed if the product expands into Nepal itself. See TECH_DEBT.
 - Dunning and downgrade flows. Upgrade, cancel, and webhook reconciliation are done.
+- Revisit the price. $6/month is trivially affordable in the economies NRN live in, and the
+  "about NPR 799" anchor beneath it may be depressing perceived value rather than adding warmth.
 - **DONE** Usage surfaces that create upgrade pressure honestly: the remaining-stories badge and
   the quota wall that answers with an offer rather than a red error.
+
+## Reaching the child (the central bet for NRN)
+
+The sharpest open question in the product. An NRN child often understands spoken Nepali and was
+never schooled in Devanagari, so today's Nepali story can be unreadable to the reader it was
+written for. Asked whether these children can read the script, the answer was **"mixed, varies by
+family"** — and it varies within a family, since an older sibling may read it while a younger one
+does not. So this is a per-child setting beside the existing age band, not an account switch
+(ADR-014).
+
+- **Read-aloud audio.** For a child who cannot read the script this is the only way in, and for a
+  second-generation parent whose own Nepali is rusty it is pronunciation support. Biggest new cost
+  surface — TTS per story — and it needs a Nepali voice good enough not to sound wrong to a native
+  ear, which is the same quality trap as the written catalogue.
+- **Romanized Nepali.** "Sano chari udyo" beside "सानो चरी उड्यो", so a child who speaks but cannot
+  read can still read along. Cheaper than audio; touches the generation prompt, the reader and the
+  PDF rather than adding a provider.
+- **Ask five NRN parents before building either.** Both are expensive and the choice between them
+  is an empirical question about their children, not an engineering one.
 
 ## Speaking Nepali (positioning, not polish)
 
@@ -66,14 +98,22 @@ which undercut the one thing this product is differentiated on.
   not yet a printable book — see TECH_DEBT.
 - Higher-resolution illustrations (~2550px), which raises generation cost per story.
 - Cover designer, page count padding, bleed and trim.
-- Print partner integration and order lifecycle.
+- Print partner integration and order lifecycle. **Use a print partner in the buyer's own country**
+  (Lulu, Blurb, Printful) rather than printing in Nepal and shipping out — international shipping
+  would cost more than the book and take weeks, which kills the gift use case it exists for.
 - Gifting flow, which is the seasonal revenue engine (Dashain, Tihar, birthdays).
 
 ## Horizon 4: distribution
 
 - Public story gallery with opt-in sharing, which doubles as SEO surface.
-- Schools and diaspora language programs (B2B, higher value, stickier).
-- Referral mechanics built on the existing share link.
+- **NRNA chapters, diaspora Nepali schools and weekend language programs.** The highest-intent
+  channel available: these organisations exist specifically because parents are worried their
+  children are losing the language, which is the exact problem this product solves. B2B, higher
+  value, stickier.
+- **Dashain and Tihar gifting.** A grandparent in Nepal buying a personalised book for a
+  grandchild abroad, or the reverse. Seasonal, emotional, and the natural pairing with print.
+- Referral mechanics built on the existing share link — already the growth loop, and it already
+  points from a parent abroad to family in Nepal.
 
 ## Explicit non-goals for now
 
