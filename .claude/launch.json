@@ -9,6 +9,15 @@
         "import os, sys; os.chdir('backend'); sys.path.insert(0, '.'); os.environ.update({'ENVIRONMENT': 'development', 'SECRET_KEY': 'local-dev-only-secret-not-for-production-use', 'GENERATION_PROVIDER': 'mock', 'JOB_BACKEND': 'inline', 'BILLING_PROVIDER': 'none', 'DATABASE_URL': 'sqlite+aiosqlite:///./data/local.db', 'MEDIA_ROOT': './data/media', 'RATE_LIMIT_ENABLED': 'false', 'LOG_FORMAT': 'text', 'LOG_LEVEL': 'INFO'}); import uvicorn; uvicorn.run('app.main:app', host='127.0.0.1', port=8000, log_level='info')"
       ],
       "port": 8000
+    },
+    {
+      "name": "kathasajha-billing-demo",
+      "runtimeExecutable": "backend/.venv/Scripts/python.exe",
+      "runtimeArgs": [
+        "-c",
+        "import os, sys; os.chdir('backend'); sys.path.insert(0, '.'); os.environ.update({'ENVIRONMENT': 'development', 'SECRET_KEY': 'local-dev-only-secret-not-for-production-use', 'GENERATION_PROVIDER': 'mock', 'JOB_BACKEND': 'inline', 'BILLING_PROVIDER': 'mock', 'STRIPE_SECRET_KEY': 'sk_test_mock_provider_never_calls_stripe', 'STRIPE_WEBHOOK_SECRET': 'local-demo-webhook-secret', 'STRIPE_PRICE_IDS': 'plus=price_demo_not_real', 'PUBLIC_BASE_URL': 'http://127.0.0.1:8010', 'DATABASE_URL': 'sqlite+aiosqlite:///./data/billing-demo.db', 'MEDIA_ROOT': './data/media', 'RATE_LIMIT_ENABLED': 'false', 'LOG_FORMAT': 'text', 'LOG_LEVEL': 'INFO'}); import uvicorn; uvicorn.run('app.main:app', host='127.0.0.1', port=8010, log_level='info')"
+      ],
+      "port": 8010
     }
   ]
 }
