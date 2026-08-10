@@ -33,6 +33,14 @@ MAX_CHILDREN_PER_STORY = 3
 MAX_COMPANIONS_PER_STORY = 2
 
 
+class CoverageUnmeasurable(RuntimeError):
+    """Coverage could not be assessed because no cast name is in the text.
+
+    Distinct from "no gaps" on purpose: the two used to be the same return value,
+    which quietly turned an unmeasured story into a passing one.
+    """
+
+
 @dataclass(frozen=True)
 class CastMember:
     role: str  # child | companion
@@ -148,7 +156,20 @@ def coverage_gaps(paragraphs: list[str], cast: list[CastMember]) -> list[str]:
     scenes = {n: sum(1 for pp in per_paragraph if pp[n] > 0) for n in names}
     busiest = max(counts.values()) if counts else 0
     if busiest == 0:
-        return []  # nobody was named at all: a different failure, not sidelining
+        # Nobody was named at all. Not sidelining — the measurement simply could
+        # not run, and the honest answer is "unknown", not "fine".
+        #
+        # This is reachable in normal use, not just in theory: the model used to
+        # rewrite names into the story's script, so a Nepali story starring
+        # "Aarav" contained "आरभ" and matched nothing. Returning [] then reported
+        # perfect coverage over a story it had not measured, and a story where
+        # only SOME names were rewritten was worse — the rewritten ones looked
+        # sidelined while the survivors set the baseline. Raising, so the caller
+        # must decide rather than inherit a false all-clear.
+        raise CoverageUnmeasurable(
+            f"No cast name appears in the story text ({len(kids)} children named). "
+            "The names were probably rewritten into another script."
+        )
 
     gaps = []
     for kid in kids:

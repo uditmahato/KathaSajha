@@ -79,6 +79,16 @@ def _story_instruction(req: StoryRequest) -> str:
         # test take it, and a golden test pins this exact string: refactoring
         # the new path must not be able to quietly degrade the common one.
         hero = f" The main character is named {req.hero_name}." if req.hero_name else ""
+        # Measured, not assumed: the model rewrites a name into the story's own
+        # script in BOTH directions — "Aarav" became "आरभ" in Nepali, and "सीता"
+        # became "Sita" in English. On a product sold as "your child is the
+        # hero", that is a story about a different child. Only added when a name
+        # exists, so the no-hero instruction stays byte-identical to GOLDEN_EN.
+        if req.hero_name:
+            hero += (
+                " Write that name exactly as given, in the same script and spelling; never "
+                "translate, transliterate, shorten, or localise it."
+            )
         return (
             "You are KathaSajha, a children's storyteller. Write a story for kids aged 6-12 "
             f'in {lang} based on this idea: "{req.prompt}".{hero}\n'
@@ -127,6 +137,17 @@ def _story_instruction(req: StoryRequest) -> str:
             rules.append(f"HERO {i} is the one who {_ROLE_BY_BAND[kid.age_band]}.")
     elif kids or req.hero_name:
         rules.append("The main character is HERO 1 in the input block below.")
+
+    if kids or req.hero_name or friends:
+        # A numbered rule, not prose buried in the trailing paragraph. The block
+        # below already said "use the names exactly as written" and the model
+        # transliterated anyway; naming the failure modes is what makes it hold.
+        rules.append(
+            "Reproduce every HERO and COMPANION name exactly as it appears in the input "
+            "block, character for character, in the same script it is written in. Never "
+            "translate, transliterate, shorten, or localise a name, even when the name's "
+            "script differs from the language of the story."
+        )
 
     if friends:
         rules.append(

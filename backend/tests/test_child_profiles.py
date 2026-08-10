@@ -472,3 +472,49 @@ async def test_duplicate_child_ids_do_not_duplicate_the_cast(client, auth_header
     await wait_for_job(client, auth_headers, s.json()["job_id"])
     story = (await client.get(f"/api/stories/{s.json()['story_id']}", headers=auth_headers)).json()
     assert len(story["cast"]) == 1, "the same child twice must not become two heroes"
+
+
+# --- Names must survive the trip through the model ---------------------------
+
+
+def test_typed_hero_name_is_pinned_against_transliteration():
+    """Measured defect, both directions: "Aarav" came back as "आरभ" in a Nepali
+    story and "सीता" came back as "Sita" in an English one. On a product sold as
+    "your child is the hero", that is a different child's name."""
+    out = _story_instruction(StoryRequest(prompt="a kite", language="ne", hero_name="Aarav"))
+    assert "exactly as given" in out
+    assert "transliterate" in out
+    # The no-name instruction must stay byte-identical, so the rule is only
+    # added when there is actually a name to protect.
+    assert "transliterate" not in _story_instruction(StoryRequest(prompt="a kite", language="en"))
+
+
+def test_cast_names_are_pinned_too():
+    cast = cast_service.to_json(
+        [
+            cast_service.CastMember(role=cast_service.CHILD, name="Aarav", age_band=rl.PRESCHOOL),
+            cast_service.CastMember(role=cast_service.CHILD, name="सीता", age_band=rl.EARLY),
+        ]
+    )
+    out = _story_instruction(
+        StoryRequest(prompt="a kite", language="ne", cast_json=cast, reading_band=rl.PRESCHOOL)
+    )
+    assert "character for character" in out
+    assert "even when the name's script differs" in out
+
+
+def test_coverage_is_unmeasurable_rather_than_silently_clean():
+    """The old code returned [] — indistinguishable from "everyone was covered" —
+    whenever no name matched, which is exactly what a transliterated story looks
+    like. An unmeasured story must not report as a passing one."""
+    cast = [
+        cast_service.CastMember(role=cast_service.CHILD, name="Aarav", age_band=rl.PRESCHOOL),
+        cast_service.CastMember(role=cast_service.CHILD, name="Priya", age_band=rl.EARLY),
+    ]
+    transliterated = ["आरभ र प्रिया खेल्दै थिए।", "आरभले चंगा भेट्टायो।", "प्रिया खुसी भइन्।"]
+    with pytest.raises(cast_service.CoverageUnmeasurable):
+        cast_service.coverage_gaps(transliterated, cast)
+
+    # And a story that DOES name them still measures normally.
+    named = ["Aarav and Priya flew a kite.", "Aarav found it.", "Priya untangled the string."]
+    assert cast_service.coverage_gaps(named, cast) == []

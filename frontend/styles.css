@@ -8,10 +8,35 @@
     --sepia-soft: #845c34;
     --oldgold: #d4af37;               /* decorative fills, borders, progress */
     --oldgold-text: #e8c86b;          /* text on sepia: 5.21:1 (d4af37 was 4.03:1) */
-    --danger: #b3362b;
+    /* Text on a gold-tinted pill over sepia. --oldgold-text reads 3.69:1 there,
+       because the translucent fill lightens the sepia out from under it: a
+       colour that passes on a surface can fail on a tint of that same surface. */
+    --badge-text: #f7ead0;            /* 5.56:1 on gold-16% over sepia */
+    /* Was #b3362b, which measured 4.47:1 on its own 12% tint over parchment and
+       5.03:1 on a white card — the same button compliant inside a card and not
+       outside one. This clears on both (4.61 / 5.20) and as a solid fill (5.49). */
+    --danger: #af352a;
+    /* Gold text on a gold tint over parchment: 3.85:1 before. */
+    --gold-ink: #7c6200;              /* 4.54:1 on gold-20% over parchment */
     --card-bg: #ffffff;
     --shadow-page: 0 4px 8px -2px rgba(112, 66, 20, 0.15), 0 2px 4px -1px rgba(112, 66, 20, 0.1);
     --shadow-book: 0 8px 16px -4px rgba(0, 0, 0, 0.2), 0 4px 8px -2px rgba(0, 0, 0, 0.1);
+
+    /* Hover must not borrow the language of disabled. See .btn:hover. */
+    --hover-veil: rgba(61, 36, 8, 0.14);
+
+    /* One content measure, shared by header, main and footer so they align.
+       They were 60rem and 46rem, which put the brand 112px left of the content
+       edge on a wide screen. Widens with the viewport; components that should
+       NOT stretch (forms, prose) cap themselves instead. */
+    --shell: 60rem;
+}
+
+@media (min-width: 78rem) {
+    :root { --shell: 74rem; }
+}
+@media (min-width: 100rem) {
+    :root { --shell: 86rem; }
 }
 
 * { box-sizing: border-box; }
@@ -33,7 +58,7 @@ body {
 /* Header / footer */
 .site-header { background: var(--sepia); padding: 1rem; }
 .header-inner {
-    max-width: 60rem; margin: 0 auto;
+    max-width: var(--shell); margin: 0 auto;
     display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;
 }
 .brand { text-decoration: none; color: var(--oldgold-text); }
@@ -42,16 +67,23 @@ body {
 .tagline { margin: 0.15rem 0 0; font-size: 0.85rem; color: var(--oldgold-text); }
 .user-nav { display: flex; align-items: center; gap: 0.5rem; }
 .usage-badge {
-    background: rgba(212, 175, 55, 0.22); color: var(--oldgold-text);
+    background: rgba(212, 175, 55, 0.16); color: var(--badge-text);
     padding: 0.25rem 0.7rem; border-radius: 999px; font-size: 0.8rem;
 }
 .site-footer {
     background: var(--sepia); color: var(--oldgold-text);
     text-align: center; padding: 0.9rem; font-size: 0.8rem; margin-top: 2rem;
 }
+/* Footer text spanned the full viewport while everything above it was boxed,
+   so on a wide screen the footer was the only thing touching the edges. */
+.site-footer > p { max-width: var(--shell); margin-inline: auto; }
 
 /* Layout */
-.app-main { flex: 1; width: 100%; max-width: 46rem; margin: 0 auto; padding: 1.5rem 1rem; }
+.app-main { flex: 1; width: 100%; max-width: var(--shell); margin: 0 auto; padding: 1.5rem 1rem; }
+/* Deliberately NOT stretched by --shell. A 74rem-wide text input is harder to
+   use than a 40rem one, and a paragraph past ~75 characters is harder to read.
+   Wide screens buy more story cards and more feature columns, not longer lines. */
+#createView > .card { max-width: 46rem; margin-inline: auto; }
 .card {
     background: var(--card-bg); border: 1px solid rgba(112, 66, 20, 0.2);
     border-radius: 10px; box-shadow: var(--shadow-page); padding: 1.4rem;
@@ -76,13 +108,23 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--oldgold); b
     font-family: inherit; font-size: 0.95rem; font-weight: 600; cursor: pointer;
     border: none; border-radius: 6px; padding: 0.55rem 1.1rem; transition: opacity 0.15s, transform 0.1s;
 }
-.btn:hover { opacity: 0.88; }
-.btn:active { transform: translateY(1px); }
+/* Hover DARKENS; disabled FADES. They used to share `opacity`, so hovering a
+   button looked like a milder version of "you cannot press this" — and on the
+   transparent .btn-ghost it only faded the label, reading as the control
+   switching off under the cursor. A veil also composites predictably over both
+   solid and translucent backgrounds, which `opacity` does not: opacity blends
+   the button toward the page behind it, so the same hover looked different on
+   parchment than on a white card. */
+.btn:hover:not(:disabled) { background-image: linear-gradient(var(--hover-veil), var(--hover-veil)); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-primary { background: var(--sepia); color: var(--parchment); }
 .btn-secondary { background: rgba(212, 175, 55, 0.25); color: var(--sepia); }
-.btn-danger { background: rgba(179, 54, 43, 0.12); color: var(--danger); }
+.btn-danger { background: rgba(175, 53, 42, 0.12); color: var(--danger); }
+/* Ghost sits on the dark header, where a dark veil is invisible. */
 .btn-ghost { background: transparent; color: var(--oldgold-text); }
+.btn-ghost:hover:not(:disabled) { background-image: none; background-color: rgba(255, 255, 255, 0.12); }
+.reader-toolbar .btn-ghost:hover:not(:disabled) { background-color: rgba(112, 66, 20, 0.10); }
 .btn-block { width: 100%; }
 .button-row { display: flex; gap: 0.7rem; flex-wrap: wrap; }
 
@@ -91,7 +133,7 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--oldgold); b
 .btn-lg { padding: 0.8rem 1.6rem; font-size: 1.05rem; text-decoration: none; display: inline-block; }
 .hero { text-align: center; padding: 2.5rem 0 1.5rem; }
 .hero-badge {
-    display: inline-block; background: rgba(212, 175, 55, 0.2); color: #8a6d00;
+    display: inline-block; background: rgba(212, 175, 55, 0.2); color: var(--gold-ink);
     padding: 0.3rem 0.9rem; border-radius: 999px; font-size: 0.85rem; margin-bottom: 1rem;
 }
 .hero-title {
@@ -117,7 +159,8 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--oldgold); b
     text-align: center; font-family: 'Playfair Display', serif;
     font-size: 1.6rem; margin-bottom: 1.6rem;
 }
-.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem;
+    max-width: 66rem; margin-inline: auto; }
 .step {
     background: var(--card-bg); border: 1px solid rgba(112, 66, 20, 0.2);
     border-radius: 10px; box-shadow: var(--shadow-page); padding: 1.3rem; text-align: center;
@@ -130,7 +173,14 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--oldgold); b
 .step h3 { font-family: 'Playfair Display', serif; margin: 0 0 0.4rem; font-size: 1.05rem; }
 .step p { margin: 0; font-size: 0.9rem; line-height: 1.6; color: var(--sepia-soft); }
 
-.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; }
+/* At 86rem the six features fell to a 211px-wide 6-across strip; merely capping
+   the grid gave 4+2, which leaves an orphan row. Six items want an explicit
+   three columns, so the second row is full rather than half empty. */
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem;
+    max-width: 62rem; margin-inline: auto; }
+@media (min-width: 58rem) {
+    .features { grid-template-columns: repeat(3, 1fr); }
+}
 .feature {
     background: var(--card-bg); border: 1px solid rgba(112, 66, 20, 0.2);
     border-radius: 10px; box-shadow: var(--shadow-page); padding: 1.2rem;
@@ -160,6 +210,7 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--oldgold); b
     padding: 0.5rem; border-bottom: 2px solid transparent;
 }
 .tab.active { color: var(--sepia); border-bottom-color: var(--oldgold); font-weight: 700; }
+.tab:hover:not(.active) { color: var(--sepia); background: rgba(212, 175, 55, 0.10); }
 .error-text { color: var(--danger); font-size: 0.88rem; }
 .notice {
     background: rgba(46, 125, 50, 0.1); color: #2e7d32; border-radius: 6px;
@@ -210,8 +261,8 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--oldgold); b
 .story-card .meta p { margin: 0; font-size: 0.78rem; color: var(--sepia-soft); }
 .status-pill { display: inline-block; font-size: 0.7rem; padding: 0.1rem 0.5rem; border-radius: 999px; margin-top: 0.4rem; }
 .status-pill.complete { background: rgba(46, 125, 50, 0.12); color: #2e7d32; }
-.status-pill.generating, .status-pill.pending { background: rgba(212, 175, 55, 0.2); color: #8a6d00; }
-.status-pill.failed { background: rgba(179, 54, 43, 0.12); color: var(--danger); }
+.status-pill.generating, .status-pill.pending { background: rgba(212, 175, 55, 0.2); color: var(--gold-ink); }
+.status-pill.failed { background: rgba(175, 53, 42, 0.12); color: var(--danger); }
 
 /* Reader */
 .reader-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; flex-wrap: wrap; gap: 0.5rem; }
@@ -230,7 +281,10 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--oldgold); b
 .image-note { font-size: 0.75rem; color: var(--sepia-soft); font-style: italic; }
 
 /* Pricing */
-.plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; }
+/* Two plans in a wide shell stretched to 664px each. A pricing card past ~22rem
+   is mostly empty space, so the tracks are bounded and the grid centres. */
+.plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 22rem));
+    gap: 1rem; justify-content: center; }
 .plan-card {
     background: var(--card-bg); border: 1px solid rgba(112, 66, 20, 0.2); border-radius: 12px;
     box-shadow: var(--shadow-page); padding: 1.5rem; display: flex; flex-direction: column;
@@ -327,7 +381,8 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--oldgold); b
 
 /* Legal pages and account deletion */
 .footer-links { margin-top: 0.35rem; }
-.footer-links a { color: var(--sepia-soft); }
+.footer-links a { color: var(--oldgold-text); }
+.site-footer a:hover { color: #fff; }
 .consent-note { text-align: center; margin: 0.7rem 0 0; }
 .legal-page { max-width: 44rem; margin: 0 auto; padding: 1.5rem 1.2rem 3rem; }
 .legal-page h1 { font-family: 'Playfair Display', serif; color: var(--sepia); }
@@ -384,3 +439,17 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--oldgold); b
 :root[data-locale="ne"] .usage-badge,
 :root[data-locale="ne"] .status-pill,
 :root[data-locale="ne"] .plan-badge { line-height: 1.6; padding-top: 0.3rem; padding-bottom: 0.3rem; }
+
+/* Interactive affordances that were missing entirely: these elements are
+   clickable and gave no feedback under the cursor. */
+.plan-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.plan-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-book); }
+.cast-option { transition: background 0.15s ease, border-color 0.15s ease; }
+.cast-option:hover { background: rgba(212, 175, 55, 0.12); border-color: var(--oldgold); }
+.locale-select { transition: background 0.15s ease; }
+.locale-select:hover { background: rgba(212, 175, 55, 0.32); }
+.link-btn { transition: color 0.15s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+    .plan-card:hover { transform: none; }
+}

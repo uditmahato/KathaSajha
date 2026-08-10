@@ -1,13 +1,30 @@
 """Application configuration via environment variables (.env supported)."""
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Anchored to the repository, NOT to the working directory.
+#
+# A bare ".env" resolves against CWD, and every way this app actually starts
+# runs from backend/ (the launcher chdirs there, uvicorn and pytest are invoked
+# there) while .env.example — and therefore the .env a person creates from it —
+# lives at the repo root. The result was silent and expensive: GOOGLE_API_KEY
+# was set correctly, no error was raised, the provider quietly resolved to
+# "mock", and every story came back as placeholder text that looks exactly like
+# a working app.
+#
+# Both locations are read so a backend-local override still works; the
+# repo-root file is listed last because later files win in pydantic-settings.
+_BACKEND_DIR = Path(__file__).resolve().parents[1]
+_REPO_ROOT = _BACKEND_DIR.parent
+_ENV_FILES = (_BACKEND_DIR / ".env", _REPO_ROOT / ".env")
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=_ENV_FILES, env_file_encoding="utf-8", extra="ignore")
 
     # --- Core ---
     app_name: str = "KathaSajha"
@@ -30,8 +47,20 @@ class Settings(BaseSettings):
     google_api_key: str = ""
     # "auto" picks gemini when a key is present, otherwise mock.
     generation_provider: Literal["auto", "gemini", "mock"] = "auto"
-    story_model: str = "gemini-2.5-flash"
+    # Measured against 2.5-flash and 3.5-flash on the defect that matters most —
+    # whether a child's name survives into the story unchanged. 2.5 mixed scripts
+    # within a single story (Latin "Aarav" in one paragraph, Devanagari in the
+    # next); 3.5 rewrote every name; 3.6 kept all of them, consistently, at
+    # near-identical token cost.
+    story_model: str = "gemini-3.6-flash"
     image_model: str = "gemini-2.5-flash-image"
+    # Illustrations, decoupled from story text. "auto" follows the generation
+    # provider; "mock" draws local placeholder art while stories still come from
+    # the real model. That combination exists because image generation needs
+    # billing enabled while text does not, so without it the only way to see the
+    # product working end to end is to fake the stories too — which hides the
+    # one thing actually worth looking at.
+    image_provider: Literal["auto", "gemini", "mock"] = "auto"
     max_prompt_chars: int = 500
     max_paragraphs: int = 5
     image_concurrency: int = 4
@@ -136,6 +165,14 @@ class Settings(BaseSettings):
         if self.generation_provider == "auto":
             return "gemini" if self.google_api_key else "mock"
         return self.generation_provider
+
+    @property
+    def resolved_image_provider(self) -> str:
+        """Which provider draws the illustrations. Follows the story provider
+        unless explicitly overridden."""
+        if self.image_provider == "auto":
+            return self.resolved_provider
+        return self.image_provider
 
     @property
     def cors_origin_list(self) -> list[str]:
