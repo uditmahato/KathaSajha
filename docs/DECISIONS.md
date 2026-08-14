@@ -118,3 +118,44 @@ explicit `ne-NP-u-nu-latn`. Pinned by a test that rejects Devanagari digits in `
 **Why**: Decided once and written down, rather than letting ICU decide it implicitly per call site.
 Prices and quota limits cannot be Devanagari without more work, and mixed numerals are worse than either
 choice made consistently.
+
+## ADR-013: The user is a Nepali family abroad, not a Nepali family in Nepal
+**Status**: accepted
+**Context**: "Nepali children's stories" describes two different products. A parent in Kathmandu
+has Nepali all around them and needs entertainment. A Non-Resident Nepali parent in Ohio or Sydney
+is watching their child lose the language, and needs an intervention. The codebase had been built
+without naming which one, so several decisions were being ranked against the wrong user.
+**Decision**: The target is the NRN diaspora. Every priority call is made against a parent abroad
+raising a child who is losing Nepali.
+**Why it changes concrete things**:
+- **Stripe is the correct and sufficient payment rail**, not a gap. Cards in the US, UK, EU,
+  Australia and the Gulf, plus Apple Pay and Google Pay free through hosted checkout. eSewa and
+  Khalti were previously ranked High on the assumption that Kathmandu was the market; they are
+  now deferred until the product deliberately expands into Nepal itself.
+- **Devanagari literacy cannot be assumed of the CHILD.** An NRN child often understands spoken
+  Nepali and was never schooled in the script, so a Devanagari story can be unreadable to exactly
+  the reader it was written for. This makes read-aloud audio and romanized Nepali core theses
+  rather than delighters.
+- **The legal surface gets harder, not easier.** NRN concentrate in the strictest jurisdictions:
+  COPPA (US), the UK Children's Code, GDPR-K (EU). A single-jurisdiction review is insufficient.
+- **The UI locale is a signal, not a necessity.** NRN parents generally read English; they are
+  the account holder. The Nepali interface earns its place through the message it sends and
+  through grandparents opening share links, not because the buyer cannot read English. The
+  STORY language is where the value actually sits.
+- **No timezone is correct for a diaspora.** UTC midnight is 7pm in New York and 11am in Sydney,
+  so "use Nepal time" is not the fix for the quota boundary; per-user timezone or a rolling
+  24-hour window is.
+
+## ADR-014: Script preference is per child, beside the age band
+**Status**: accepted
+**Context**: Asked whether NRN children can read Devanagari, the answer was "mixed, varies by
+family" — and it varies *within* a family too, since an older sibling may read the script while a
+younger one does not.
+**Decision**: Script preference becomes a per-child attribute on `ChildProfile`, sitting next to
+`age_band`, rather than an account setting or a per-story toggle.
+**Why**: It is the same shape of fact as reading level, discovered once and reused forever, and
+the precedent is already built and tested — a closed vocabulary, optional, defaulting to the
+current behaviour, snapshotted into the story's cast so changing it later never rewrites a book
+already on the shelf. An account-level setting would be wrong for siblings at different stages;
+a per-story toggle would ask the same question every time. Like `age_band`, it steers generation
+and rendering only, and is never returned to any client that does not need it.

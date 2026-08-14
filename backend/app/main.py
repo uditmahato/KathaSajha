@@ -68,6 +68,17 @@ def validate_production_settings(settings) -> None:
             "written to the log and never delivered. Configure EMAIL_BACKEND=smtp "
             "and the SMTP_* settings."
         )
+    if settings.resolved_image_provider == "mock" and settings.resolved_provider != "mock":
+        # Placeholder gradients instead of illustrations, on a product sold as
+        # "an illustrated story on every page". Nothing errors, the pages render,
+        # the PDF exports — a paying parent just receives coloured shapes. This
+        # override exists so real stories can be reviewed before image billing is
+        # enabled; it must never survive the trip to production.
+        raise RuntimeError(
+            "IMAGE_PROVIDER is 'mock' in production while stories come from a real "
+            "provider: every illustration would be a placeholder gradient and nothing "
+            "would look wrong. Set IMAGE_PROVIDER=auto once image billing is enabled."
+        )
     if settings.email_backend == "smtp" and not settings.smtp_host:
         # Same silent failure by another route: smtplib.SMTP("") constructs
         # without connecting, the first command raises, and SmtpEmailSender

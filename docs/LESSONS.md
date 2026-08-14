@@ -145,6 +145,39 @@ same code path - was weakened by being overstated next to a number anyone could 
 **Rule**: measure before claiming, and put the measurement in the comment. A defensible smaller
 claim beats an impressive one that a reviewer can disprove in a minute.
 
+## A mock provider cannot tell you the product works
+Every test, every browser check and all four stories in the dev database came from the mock
+provider. The first real generation immediately found that the model rewrites a child's name into
+the story's own script - "Aarav" became "आरभ" in Nepali and "सीता" became "Sita" in English - on the
+one feature the product is sold on. The instruction already said "use the names exactly as written"
+and the model ignored it; naming the failure modes ("never translate, transliterate, shorten or
+localise") is what made it hold.
+**Rule**: a provider abstraction lets you build offline, not verify. Before calling a generation
+feature done, run it against the real model and read the output.
+
+## An unmeasurable result must not look like a passing one
+`coverage_gaps()` returned `[]` when no cast name appeared in the text, which is the same value it
+returns when every child was covered properly. Transliterated names match nothing, so a Nepali
+story silently reported perfect coverage over text it had never measured - and a story where only
+some names were rewritten was worse, because the survivors set the baseline and the rewritten ones
+looked sidelined.
+**Rule**: "could not measure" and "measured, and it is fine" need different return values. If a
+check can be defeated by input it cannot see, make it say so.
+
+## A colour that passes on a surface can fail on a tint of it
+`--oldgold-text` is 5.21:1 on sepia and 3.69:1 on a gold-tinted pill sitting on that same sepia,
+because the translucent fill lightens the background out from under the text. The Delete button was
+the same shape of bug in reverse: 5.03:1 inside a white card, 4.47:1 on the parchment page - one
+component, compliant in one place and not the other.
+**Rule**: check contrast against the flattened backdrop each instance actually renders on, not
+against the palette colour it nominally sits on.
+
+## Hover and disabled must not speak the same language
+Every button hover was `opacity: 0.88` while `:disabled` was `opacity: 0.5`. Hovering therefore
+looked like a milder version of "you cannot press this", and on a transparent ghost button it only
+faded the label, reading as the control switching off under the cursor.
+**Rule**: hover strengthens, disabled weakens. If they share a CSS property, one of them is wrong.
+
 ## Verify in the browser, not just in tests
 Several defects (blank views on a rejected promise, stale "session expired" errors after re-login) were
 invisible to API tests and obvious in the browser.

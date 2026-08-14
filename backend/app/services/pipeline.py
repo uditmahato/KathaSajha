@@ -22,18 +22,48 @@ logger = logging.getLogger(__name__)
 _provider: GenerationProvider | None = None
 
 
+class SplitProvider(GenerationProvider):
+    """Story text from one provider, illustrations from another.
+
+    Exists because the two halves have different prerequisites: Gemini text runs
+    on a free key while Gemini images require billing. Without this, seeing the
+    product work end to end meant falling back to the mock for BOTH, which
+    replaces the story — the only part whose quality is actually in question —
+    with placeholder text.
+    """
+
+    def __init__(self, text: GenerationProvider, images: GenerationProvider) -> None:
+        self._text = text
+        self._images = images
+        self.name = f"{text.name}+{images.name}"
+
+    async def write_story(self, req: StoryRequest):
+        return await self._text.write_story(req)
+
+    async def illustrate(self, image_prompt: str, *, title: str, position: int):
+        return await self._images.illustrate(image_prompt, title=title, position=position)
+
+
+def _build(name: str) -> GenerationProvider:
+    if name == "gemini":
+        from .gemini import GeminiProvider
+
+        return GeminiProvider()
+    from .mock import MockProvider
+
+    return MockProvider()
+
+
 def get_provider() -> GenerationProvider:
     global _provider
     if _provider is None:
-        name = get_settings().resolved_provider
-        if name == "gemini":
-            from .gemini import GeminiProvider
-
-            _provider = GeminiProvider()
+        settings = get_settings()
+        text_name = settings.resolved_provider
+        image_name = settings.resolved_image_provider
+        if text_name == image_name:
+            _provider = _build(text_name)
         else:
-            from .mock import MockProvider
-
-            _provider = MockProvider()
+            _provider = SplitProvider(_build(text_name), _build(image_name))
         logger.info("Generation provider: %s", _provider.name)
     return _provider
 
@@ -149,7 +179,21 @@ async def run_generation(story_id: str) -> None:
         # shape, and there is no live-API data yet to justify that. This is the
         # evidence that would.
         story_cast = cast_service.from_json(story_cast_json)
-        gaps = cast_service.coverage_gaps(draft.paragraphs, story_cast)
+        try:
+            gaps = cast_service.coverage_gaps(draft.paragraphs, story_cast)
+        except cast_service.CoverageUnmeasurable:
+            # A story whose coverage cannot be measured is not a story that
+            # passed. Logged as its own event so it never hides inside the
+            # silence that means "no gaps", and never fails a generation the
+            # customer already has.
+            gaps = []
+            logger.warning(
+                "Story cast coverage unmeasurable",
+                extra={
+                    "story_id": story_id,
+                    "cast_size": len(cast_service.children(story_cast)),
+                },
+            )
         if gaps:
             # COUNTS, never names or the band. Log extras are copied verbatim
             # by the JSON formatter and ride along as Sentry breadcrumbs, which

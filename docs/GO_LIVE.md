@@ -22,9 +22,13 @@ next to it; the app itself enforces several of these by refusing to boot.
 
 ## Legal (children's product — not optional)
 
-- [ ] Have `/privacy` and `/terms` reviewed by a qualified lawyer
-      (COPPA + GDPR-K exposure). They are honest drafts of what the code does,
-      not legal advice
+- [ ] Decide which countries you will accept signups from, and tell your counsel.
+      The audience is the Nepali diaspora (ADR-013), which concentrates in the
+      strictest regimes at once: **COPPA** (US), the **Children's Code** (UK),
+      **GDPR-K** (EU), plus Australia. A single-jurisdiction review does not
+      cover them, and "wherever people find us" is a decision by default
+- [ ] Have `/privacy` and `/terms` reviewed by a qualified lawyer against that
+      list. They are honest drafts of what the code does, not legal advice
 - [ ] Replace the `[contact email]` and `[governing law]` placeholders; remove
       the "draft pending review" notices
 - [ ] Confirm the deletion flow satisfies your counsel (in-app: footer ->
